@@ -1,0 +1,35 @@
+# no-dev-script-in-layout
+#
+# Dev / design tooling scripts injected into the root layout or production
+# HTML. The audit found a Figma MCP design-capture script
+# (`https://mcp.figma.com/.../capture.js`) shipped in `app/layout.tsx`.
+#
+# We flag string literals whose value is an unmistakable dev/design-tooling
+# endpoint — Figma MCP, *.capture.js, ngrok tunnels, webpack-dev-server,
+# localhost/loopback with a port+path, and common dev-overlay injectors. This
+# catches both JSX `<script src="...">` / `<Script src="..." />` and imperative
+# `el.src = "..."` injection. Test files are excluded via `ignores`.
+id: no-dev-script-in-layout
+language: tsx
+severity: error
+message: >-
+  Dev/design tooling script referenced in production code. Remove it from the
+  layout/HTML — these belong in dev-only tooling, never in shipped output.
+note: See rules/README.md#no-dev-script-in-layout.
+ignores:
+  - "**/*.test.*"
+  - "**/*.spec.*"
+  - "**/__tests__/**"
+  - "**/__mocks__/**"
+  - "**/*.stories.*"
+  - "**/*.story.*"
+  - "**/test/**"
+  - "**/tests/**"
+  - "**/node_modules/**"
+  - "**/fixtures/**"
+rule:
+  any:
+    - kind: string
+      regex: "(mcp\\.figma\\.com|/capture\\.js|figma[^\"'\\s]*capture|webpack-dev-server|browser-sync|stagewise|react-devtools|\\.ngrok\\.|\\.ngrok-free\\.|/__dev|/__next-dev|localhost:[0-9]{2,5}/|127\\.0\\.0\\.1:[0-9]{2,5}/)"
+    - kind: template_string
+      regex: "(mcp\\.figma\\.com|/capture\\.js|figma[^\"'\\s]*capture|webpack-dev-server|browser-sync|stagewise|react-devtools|\\.ngrok\\.|\\.ngrok-free\\.|/__dev|/__next-dev|localhost:[0-9]{2,5}/|127\\.0\\.0\\.1:[0-9]{2,5}/)"

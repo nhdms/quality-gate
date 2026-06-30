@@ -52,3 +52,14 @@ test('rejects a wrong type for minTests', () => {
   assert.ok(errors.length > 0);
   assert.match(errors.join('\n'), /minTests/);
 });
+
+test('rejects an unknown anti-fake-done rule id', () => {
+  const errors = validateConfig(load('invalid-rule-id.json'), SCHEMA);
+  assert.ok(errors.length > 0);
+  assert.match(errors.join('\n'), /no-such-rule/);
+});
+
+test('accepts a valid rules block', () => {
+  const cfg = { stack: 'ts', rules: { enabled: false, disabled: ['no-lying-return'] } };
+  assert.deepStrictEqual(validateConfig(cfg, SCHEMA), []);
+});

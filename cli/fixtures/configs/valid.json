@@ -9,5 +9,10 @@
     "breakpoints": [375, 1280],
     "baselineDir": "visual/baselines"
   },
-  "wired": ["db", "auth"]
+  "wired": ["db", "auth"],
+  "rules": {
+    "enabled": true,
+    "disabled": ["no-dev-script-in-layout"],
+    "warnOnly": ["no-mock-in-prod-path"]
+  }
 }

@@ -1,0 +1,6 @@
+{
+  "stack": "ts",
+  "rules": {
+    "disabled": ["no-such-rule"]
+  }
+}

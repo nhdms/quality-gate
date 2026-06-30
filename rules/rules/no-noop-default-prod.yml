@@ -1,0 +1,42 @@
+# no-noop-default-prod
+#
+# A provider/transport whose default resolves to a no-op/stub when an env var
+# is unset. The audit caught this in fillr `lib/email/client.ts`:
+#
+#     const provider = process.env.EMAIL_PROVIDER ?? "test";  // silent no-op
+#
+# When EMAIL_PROVIDER is unset in production the app silently falls back to a
+# "test" transport that drops every email while still reporting success. The
+# correct shape is to THROW when the var is unset in production, never to
+# default to a stub. We flag any `process.env.X ?? "<stub>"` /
+# `process.env.X || "<stub>"` where the fallback literal is a known
+# stub/no-op token.
+id: no-noop-default-prod
+language: tsx
+severity: error
+message: >-
+  Provider/transport defaults to a no-op stub ("$DEFAULT") when an env var is
+  unset. In production this silently drops work while reporting success. Throw
+  when the var is missing instead of defaulting to a stub.
+note: >-
+  See rules/README.md#no-noop-default-prod. Suppress with a clear non-stub
+  default, or guard the fallback behind NODE_ENV !== 'production'.
+ignores:
+  - "**/*.test.*"
+  - "**/*.spec.*"
+  - "**/__tests__/**"
+  - "**/__mocks__/**"
+  - "**/*.stories.*"
+  - "**/*.story.*"
+  - "**/test/**"
+  - "**/tests/**"
+  - "**/node_modules/**"
+  - "**/fixtures/**"
+rule:
+  any:
+    - pattern: process.env.$VAR ?? $DEFAULT
+    - pattern: process.env.$VAR || $DEFAULT
+constraints:
+  DEFAULT:
+    # A string literal whose value is a recognised stub/no-op/disabled token.
+    regex: "^[\"'`](test|testing|mock|mocked|stub|stubbed|noop|no-op|fake|faked|dummy|disabled|in-memory|inmemory|memory|console|placeholder)[\"'`]$"

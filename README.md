@@ -92,7 +92,8 @@ override.
 
 ```
 .github/workflows/gate.yml        reusable workflow (workflow_call) — the stable entrypoint
-.github/workflows/_lane-*.yml     per-stack lanes (ts/go/rust) — stubs for now
+.github/workflows/_lane-ts.yml    ts lane — runs the T1 anti-fake-done ruleset (blocking)
+.github/workflows/_lane-*.yml     go/rust lanes — stubs for now
 .github/workflows/ci.yml          this repo's own CI: unit tests + self-dogfood
 gate.schema.json                  JSON Schema for gate.config.json
 gate.config.json                  this repo's own gate config
@@ -106,15 +107,28 @@ cli/check-frozen-lockfile.js      frozen/immutable install selection + drift
 cli/check-changed-coverage.js     lcov ∩ diff → changed-line coverage gate
 cli/check-retries.js              e2e retry surfacing (retry-as-failure)
 cli/config-get.js                 jq-free config reader for the lanes
+cli/run-rules.js                  T1 anti-fake-done ruleset runner (drives ast-grep)
 cli/lib/match.js                  shared path/glob matcher
 cli/*.test.js                     unit tests + fixtures (node --test)
-rules/  visual/                   future: anti-fake-done rules, visual oracle
+rules/                            T1 anti-fake-done ruleset (ast-grep) — see rules/README.md
+visual/                           future: visual oracle
 ```
+
+## Anti-fake-done ruleset (T1)
+
+The `ts` lane runs a versioned [ast-grep](https://ast-grep.github.io) ruleset
+that catches **optimistic success signaling** — code that reports success when
+the guarantee is absent (no-op default providers, lying return values, mock data
+on production paths, dev scripts in production HTML). It's documented in
+[`rules/README.md`](./rules/README.md) and configurable per-project via the
+`rules` block of `gate.config.json`. Pin a known set via
+[`rules/VERSION`](./rules/VERSION).
 
 ## Develop
 
 ```sh
-node --test        # run cli unit tests (no dependencies required)
+npm ci             # installs the pinned ast-grep (T1 rules engine)
+node --test        # run all unit tests
 ```
 
 ## Status
@@ -124,5 +138,7 @@ node --test        # run cli unit tests (no dependencies required)
 - **#2 T0 mechanics** — the hardened CI mechanics above (no silent-zero-tests,
   frozen lockfile, changed-line coverage, secret scan, no-junk-diff,
   retry-as-failure). ✅
-- T1 anti-fake-done ruleset, T2 visual oracle, T3 wired-not-mock smoke land in
-  later issues.
+- **#4 T1 anti-fake-done ruleset** — versioned ast-grep ruleset run as a
+  blocking ts lane (no-op default providers, lying return values, mock data on
+  production paths, dev scripts in production HTML). ✅
+- T2 visual oracle and T3 wired-not-mock smoke land in later issues.

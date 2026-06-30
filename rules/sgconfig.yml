@@ -1,0 +1,20 @@
+# ast-grep project config for the anti-fake-done ruleset (T1).
+#
+# All rules are authored against the `tsx` grammar, which is a superset that
+# parses both plain TypeScript (.ts) and JSX (.tsx). `languageGlobs` below
+# routes every TS/JS source file through that one parser so a single rule set
+# covers .ts, .tsx, .js, .jsx and the m/c variants — no per-extension
+# duplication. (Caveat: legacy angle-bracket casts `<T>x` in .ts files are
+# ambiguous under tsx; modern code uses `x as T`. Documented in README.)
+ruleDirs:
+  - rules
+languageGlobs:
+  tsx:
+    - "*.ts"
+    - "*.tsx"
+    - "*.js"
+    - "*.jsx"
+    - "*.mts"
+    - "*.cts"
+    - "*.mjs"
+    - "*.cjs"

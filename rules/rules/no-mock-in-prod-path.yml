@@ -1,0 +1,51 @@
+# no-mock-in-prod-path
+#
+# Mock / hardcoded / placeholder data, or setTimeout/setInterval fakes standing
+# in for real async work, on a NON-TEST production code path (pages,
+# components, server). The audit found an onboarding wizard that was "100%
+# mock": MOCK_ data rendered as real, plus a `setTimeout` faking the save call.
+#
+# Two high-signal shapes are flagged:
+#   1. a `const/let/var` whose NAME marks it as mock/fake/placeholder data, and
+#   2. a `new Promise(... setTimeout ...)` fake-await (a simulated round-trip).
+#
+# Test, spec, story and __mocks__ files are excluded (see `ignores`) — mock
+# data there is legitimate. Generic TODO comments are intentionally NOT matched
+# to keep the rule precise.
+id: no-mock-in-prod-path
+language: tsx
+severity: error
+message: >-
+  Mock/placeholder data or a fake timer on a production code path. Wire this to
+  real data/IO before shipping, or move it to a test file.
+note: See rules/README.md#no-mock-in-prod-path.
+ignores:
+  - "**/*.test.*"
+  - "**/*.spec.*"
+  - "**/__tests__/**"
+  - "**/__mocks__/**"
+  - "**/*.stories.*"
+  - "**/*.story.*"
+  - "**/test/**"
+  - "**/tests/**"
+  - "**/node_modules/**"
+  - "**/fixtures/**"
+rule:
+  any:
+    # 1. mock/fake/placeholder-named data declarations (NAME filtered below)
+    - pattern: const $NAME = $INIT
+    - pattern: let $NAME = $INIT
+    - pattern: var $NAME = $INIT
+    # 2. a Promise that wraps a setTimeout/setInterval — a fake async round-trip
+    - all:
+        - pattern: new Promise($$$PROMISE_ARGS)
+        - has:
+            stopBy: end
+            any:
+              - pattern: setTimeout($$$T)
+              - pattern: setInterval($$$T)
+constraints:
+  # Only the declaration branches bind NAME; this filters them to data whose
+  # very name advertises it as mock/fake/placeholder.
+  NAME:
+    regex: "^(MOCK|FAKE|DUMMY|STUB|PLACEHOLDER|HARDCODED|SAMPLE)(_|$)|^(mock|fake|dummy|stub|placeholder|hardcoded|sample)[A-Z0-9]|^(Mock|Fake|Dummy|Stub|Placeholder|Hardcoded|Sample)[A-Z0-9a-z]"

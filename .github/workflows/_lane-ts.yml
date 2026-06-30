@@ -1,11 +1,15 @@
 name: ts-lane
 
-# TypeScript/JavaScript lane — T0 mechanics:
-#   - frozen lockfile install (drift fails)
-#   - anti-fake-done lint of package scripts (no --passWithNoTests etc.)
-#   - run tests WITHOUT --passWithNoTests; enforce thresholds.minTests
-#   - changed-line coverage gate
-#   - e2e retry surfacing (retry-as-failure-signal)
+# TypeScript/JavaScript lane.
+#   T0 mechanics:
+#     - frozen lockfile install (drift fails)
+#     - anti-fake-done lint of package scripts (no --passWithNoTests etc.)
+#     - run tests WITHOUT --passWithNoTests; enforce thresholds.minTests
+#     - changed-line coverage gate
+#     - e2e retry surfacing (retry-as-failure-signal)
+#   T1 anti-fake-done static ruleset (blocking):
+#     - rules/ via ast-grep, run by cli/run-rules.js — catches
+#       optimistic-success-signaling ("fake-done").
 on:
   workflow_call:
     inputs:
@@ -26,15 +30,19 @@ jobs:
         with:
           fetch-depth: 0
 
+      # The gate's tooling (cli/ + rules/) lives in THIS repo. When the gate
+      # runs on its own repo (dogfood) the checkout already contains it; an
+      # external consumer does not, so we fetch it into a side directory.
       - name: Resolve gate tooling
         id: tool
         run: |
-          if [ -f ./cli/check-min-tests.js ]; then
+          if [ -f ./cli/check-min-tests.js ] && [ -f ./cli/run-rules.js ]; then
             echo "dir=." >> "$GITHUB_OUTPUT"
           else
             echo "dir=.quality-gate" >> "$GITHUB_OUTPUT"
           fi
 
+      # TODO(#adoption): pin `ref` to the v1 tag once the interface is frozen.
       - name: Checkout quality-gate tooling
         if: steps.tool.outputs.dir == '.quality-gate'
         uses: actions/checkout@v4
@@ -109,3 +117,16 @@ jobs:
             exit 0
           fi
           node "$TOOL/cli/check-retries.js" "$REPORT" "$MAXR"
+
+      # ast-grep is a pinned devDependency of the gate tooling. Install it into
+      # the tooling dir's local node_modules (run-rules.js resolves the local
+      # .bin/ast-grep) rather than `-g`, which fails with EACCES on locked-down
+      # self-hosted runners.
+      - name: Install T1 rules engine (ast-grep)
+        run: |
+          set -eo pipefail
+          cd "${{ steps.tool.outputs.dir }}"
+          npm ci
+
+      - name: Anti-fake-done ruleset (T1, blocking)
+        run: node ${{ steps.tool.outputs.dir }}/cli/run-rules.js . --config "$CONFIG" --tool-dir ${{ steps.tool.outputs.dir }}
