@@ -1,0 +1,6 @@
+{
+  "stack": "ts",
+  "thresholds": {
+    "changedLineCoverage": 150
+  }
+}

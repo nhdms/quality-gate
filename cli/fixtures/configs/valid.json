@@ -1,0 +1,13 @@
+{
+  "stack": "ts",
+  "thresholds": {
+    "changedLineCoverage": 80,
+    "minTests": 1
+  },
+  "visual": {
+    "routes": ["/", "/login"],
+    "breakpoints": [375, 1280],
+    "baselineDir": "visual/baselines"
+  },
+  "wired": ["db", "auth"]
+}

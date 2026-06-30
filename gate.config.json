@@ -1,0 +1,7 @@
+{
+  "stack": "auto",
+  "thresholds": {
+    "changedLineCoverage": 80,
+    "minTests": 1
+  }
+}

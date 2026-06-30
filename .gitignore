@@ -1,0 +1,7 @@
+# Node
+node_modules/
+
+# agent-orchestrator / local agent tooling (not part of the project)
+.ao/
+.claude/
+.omc/

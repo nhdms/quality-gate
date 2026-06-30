@@ -1,0 +1,20 @@
+name: rust-lane
+
+# Per-stack lane for Rust repos.
+# STUB ONLY for #1 — real checks land in later issues.
+on:
+  workflow_call:
+    inputs:
+      config:
+        description: Path to the caller's gate.config.json.
+        type: string
+        default: ./gate.config.json
+
+jobs:
+  rust:
+    name: rust checks (stub)
+    runs-on: [self-hosted, quality-gate]
+    steps:
+      - name: Stub
+        run: |
+          echo "quality-gate rust lane stub — real checks land in later issues (config=${{ inputs.config }})."

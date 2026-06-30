@@ -1,0 +1,20 @@
+name: go-lane
+
+# Per-stack lane for Go repos.
+# STUB ONLY for #1 — real checks land in later issues.
+on:
+  workflow_call:
+    inputs:
+      config:
+        description: Path to the caller's gate.config.json.
+        type: string
+        default: ./gate.config.json
+
+jobs:
+  go:
+    name: go checks (stub)
+    runs-on: [self-hosted, quality-gate]
+    steps:
+      - name: Stub
+        run: |
+          echo "quality-gate go lane stub — real checks land in later issues (config=${{ inputs.config }})."
