@@ -1,0 +1,29 @@
+agentRules: >-
+  This repo builds a PORTABLE quality gate consumed by other repos via GitHub
+  reusable workflows (uses: nhdms/quality-gate/.github/workflows/gate.yml@v1) and
+  auto-injected by agent-orchestrator. See the pinned epic issue #8 for the DAG,
+  spawn waves, and design rationale.
+
+
+  CI RUNNER: a dedicated self-hosted runner is registered for this repo with
+  label `quality-gate`. ALL workflows (gate.yml, lanes, and this repo's own CI)
+  MUST use `runs-on: [self-hosted, quality-gate]` — never ubuntu-latest. We do
+  not use GitHub-hosted minutes.
+
+
+  Use conventional commits (feat:, fix:, chore:, docs:, refactor:, test:, ci:).
+  Link the issue number in commit + PR title (e.g. "feat(gate): ... (#2)").
+
+
+  Keep the `workflow_call` interface of gate.yml STABLE — downstream repos pin
+  it. Per-project differences belong in gate.config.json, validated by
+  gate.schema.json — not hardcoded in the workflow.
+
+
+  Every gate check ships with a fixture proving it goes RED on the bad case and
+  GREEN on the clean case. The acceptance criteria in each issue are the spec;
+  derive fixtures from them. The anti-fake-done rules (#4) must be regression-
+  tested against the real audited snippets named in that issue.
+
+
+  Dogfood: this repo runs its own gate on its own PRs once #1 lands.
