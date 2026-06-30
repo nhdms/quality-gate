@@ -100,7 +100,10 @@ function runRules({ target = '.', toolDir = TOOL_ROOT, configPath } = {}) {
     { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }
   );
   if (res.error) throw res.error;
-  // ast-grep exits 0 under --json; a non-empty stderr with no stdout is a real failure.
+  // ast-grep exits 1 when it reports error-severity findings (which we expect),
+  // so a non-zero status alone is not a failure. A non-zero status with NO
+  // stdout means ast-grep itself errored (bad rule, parse crash) — that we
+  // surface. We derive pass/fail from the parsed findings below, not the code.
   if (res.status !== 0 && !res.stdout) {
     throw new Error(`ast-grep failed (status ${res.status}): ${res.stderr || '(no output)'}`);
   }

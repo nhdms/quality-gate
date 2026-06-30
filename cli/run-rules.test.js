@@ -86,6 +86,18 @@ test('mock data in a test file is ignored', () => {
   assert.strictEqual(result.findings.length, 0, JSON.stringify(result.findings));
 });
 
+// --- Regression: ordinary 'sample*' identifiers must NOT be flagged ---
+// The 'sample'/'SAMPLE' token was removed from the NAME regex because it
+// false-positives on audio/analytics code (sampleRate, sampleSize, ...).
+test('no-mock-in-prod-path: does not flag ordinary sample* identifiers', () => {
+  const result = scanFixtures(['no-mock-in-prod-path/sample-identifiers.tsx']);
+  assert.strictEqual(
+    result.findings.length,
+    0,
+    `sample* identifiers should not be flagged, got: ${JSON.stringify(result.findings.map((f) => f.text))}`
+  );
+});
+
 // --- Config toggle: disable a rule -> it stops firing ---
 test('config can disable an individual rule', () => {
   const result = scanFixtures(['no-noop-default-prod/bad.ts'], {
@@ -128,6 +140,22 @@ test('ruleset is versioned and the manifest matches the rule files', () => {
   const manifestIds = manifest.rules.map((r) => r.id).sort();
   assert.deepStrictEqual(manifestIds, discovered, 'manifest must list exactly the rule files');
   assert.deepStrictEqual(discovered, CASES.map((c) => c.id).sort(), 'every rule must have a fixture case');
+});
+
+// --- Schema can't drift from the rule files: the disabled/warnOnly enums in
+//     gate.schema.json must list exactly the discoverable rule ids ---
+test('gate.schema.json rule-id enums match the rule files', () => {
+  const schema = JSON.parse(fs.readFileSync(path.join(TOOL_ROOT, 'gate.schema.json'), 'utf8'));
+  const ruleProps = schema.properties.rules.properties;
+  const discovered = discoverRuleIds(RULES_DIR).sort();
+  for (const key of ['disabled', 'warnOnly']) {
+    const enumIds = [...ruleProps[key].items.enum].sort();
+    assert.deepStrictEqual(
+      enumIds,
+      discovered,
+      `gate.schema.json rules.${key}.items.enum must equal the rule files`
+    );
+  }
 });
 
 // --- The default gate.config.json parses through the config reader ---

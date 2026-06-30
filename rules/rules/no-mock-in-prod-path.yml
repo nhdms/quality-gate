@@ -47,5 +47,10 @@ rule:
 constraints:
   # Only the declaration branches bind NAME; this filters them to data whose
   # very name advertises it as mock/fake/placeholder.
+  #
+  # NB: 'sample'/'SAMPLE' is deliberately NOT included — it false-positives on
+  # ordinary production identifiers (sampleRate, sampleSize, sampleCount in
+  # audio/analytics code). mock/fake/stub/dummy/placeholder + the MOCK_/FAKE_
+  # SCREAMING prefixes still cover genuine mock data.
   NAME:
-    regex: "^(MOCK|FAKE|DUMMY|STUB|PLACEHOLDER|HARDCODED|SAMPLE)(_|$)|^(mock|fake|dummy|stub|placeholder|hardcoded|sample)[A-Z0-9]|^(Mock|Fake|Dummy|Stub|Placeholder|Hardcoded|Sample)[A-Z0-9a-z]"
+    regex: "^(MOCK|FAKE|DUMMY|STUB|PLACEHOLDER|HARDCODED)(_|$)|^(mock|fake|dummy|stub|placeholder|hardcoded)[A-Z0-9]|^(Mock|Fake|Dummy|Stub|Placeholder|Hardcoded)[A-Z0-9a-z]"
