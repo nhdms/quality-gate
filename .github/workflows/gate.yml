@@ -1,0 +1,116 @@
+name: gate
+
+# Portable quality gate. Consumed by any repo via:
+#
+#   jobs:
+#     gate:
+#       uses: nhdms/quality-gate/.github/workflows/gate.yml@main
+#       with:
+#         config: ./gate.config.json   # optional, this is the default
+#
+# The `workflow_call` interface below is STABLE — downstream repos pin it.
+# Per-project differences belong in gate.config.json (validated by
+# gate.schema.json), never hardcoded here.
+on:
+  workflow_call:
+    inputs:
+      config:
+        description: Path to the caller's gate.config.json.
+        type: string
+        default: ./gate.config.json
+      stack:
+        description: Stack override (auto|ts|go|rust). 'auto' detects from manifests.
+        type: string
+        default: auto
+    outputs:
+      stack:
+        description: The stack the gate ran against (detected or overridden).
+        value: ${{ jobs.detect.outputs.stack }}
+
+jobs:
+  detect:
+    name: detect + validate
+    runs-on: [self-hosted, quality-gate]
+    outputs:
+      stack: ${{ steps.detect.outputs.stack }}
+    steps:
+      - name: Checkout caller repo
+        uses: actions/checkout@v4
+
+      # The gate's tooling (schema + cli) lives in THIS repo. When the gate runs
+      # on its own repo (dogfood), the caller checkout already contains it; an
+      # external consumer does not, so we fetch it into a side directory.
+      - name: Resolve gate tooling
+        id: tool
+        run: |
+          if [ -f ./cli/validate-config.js ] && [ -f ./gate.schema.json ]; then
+            echo "dir=." >> "$GITHUB_OUTPUT"
+          else
+            echo "dir=.quality-gate" >> "$GITHUB_OUTPUT"
+          fi
+
+      # TODO(#adoption): pin `ref` to the v1 tag once the interface is frozen.
+      - name: Checkout quality-gate tooling
+        if: steps.tool.outputs.dir == '.quality-gate'
+        uses: actions/checkout@v4
+        with:
+          repository: nhdms/quality-gate
+          ref: main
+          path: .quality-gate
+
+      - name: Validate gate.config.json against schema
+        run: node ${{ steps.tool.outputs.dir }}/cli/validate-config.js "${{ inputs.config }}" ${{ steps.tool.outputs.dir }}/gate.schema.json
+
+      - name: Detect stack
+        id: detect
+        run: |
+          set -euo pipefail
+          if [ "${{ inputs.stack }}" = "auto" ]; then
+            stack="$(node ${{ steps.tool.outputs.dir }}/cli/detect-stack.js .)"
+          else
+            stack="${{ inputs.stack }}"
+          fi
+          echo "stack=$stack" >> "$GITHUB_OUTPUT"
+          echo "quality-gate: running stack '$stack'"
+
+  ts:
+    name: ts lane
+    needs: detect
+    if: needs.detect.outputs.stack == 'ts'
+    uses: ./.github/workflows/_lane-ts.yml
+    with:
+      config: ${{ inputs.config }}
+
+  go:
+    name: go lane
+    needs: detect
+    if: needs.detect.outputs.stack == 'go'
+    uses: ./.github/workflows/_lane-go.yml
+    with:
+      config: ${{ inputs.config }}
+
+  rust:
+    name: rust lane
+    needs: detect
+    if: needs.detect.outputs.stack == 'rust'
+    uses: ./.github/workflows/_lane-rust.yml
+    with:
+      config: ${{ inputs.config }}
+
+  gate:
+    name: gate result
+    needs: [detect, ts, go, rust]
+    if: always()
+    runs-on: [self-hosted, quality-gate]
+    steps:
+      - name: Aggregate lane results
+        run: |
+          set -euo pipefail
+          echo "detect=${{ needs.detect.result }} ts=${{ needs.ts.result }} go=${{ needs.go.result }} rust=${{ needs.rust.result }}"
+          for r in "${{ needs.detect.result }}" "${{ needs.ts.result }}" "${{ needs.go.result }}" "${{ needs.rust.result }}"; do
+            if [ "$r" = "failure" ] || [ "$r" = "cancelled" ]; then
+              echo "quality-gate: FAILED"
+              exit 1
+            fi
+          done
+          echo "quality-gate: PASSED for stack '${{ needs.detect.outputs.stack }}'"

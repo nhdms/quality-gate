@@ -1,0 +1,60 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/nhdms/quality-gate/gate.schema.json",
+  "title": "quality-gate config",
+  "description": "Schema for gate.config.json consumed by the quality-gate reusable workflow.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["stack"],
+  "properties": {
+    "stack": {
+      "description": "Target stack, or 'auto' to detect from lockfiles/manifests.",
+      "type": "string",
+      "enum": ["auto", "ts", "go", "rust"]
+    },
+    "thresholds": {
+      "description": "Numeric quality gates (enforced by later issues; declared here).",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "changedLineCoverage": {
+          "description": "Minimum % coverage required on lines changed by the PR.",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "minTests": {
+          "description": "Minimum number of tests that must execute.",
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "visual": {
+      "description": "Visual/UI oracle config (consumed by the visual lane, T2).",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "routes": {
+          "description": "Routes/paths to capture and diff.",
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "breakpoints": {
+          "description": "Viewport widths (px) to render at.",
+          "type": "array",
+          "items": { "type": "integer", "minimum": 1 }
+        },
+        "baselineDir": {
+          "description": "Directory holding approved baseline screenshots.",
+          "type": "string"
+        }
+      }
+    },
+    "wired": {
+      "description": "Capabilities that must be wired end-to-end (not mocked). Checked by the wired/CLI lane, T4.",
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}

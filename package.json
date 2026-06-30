@@ -1,0 +1,10 @@
+{
+  "name": "quality-gate",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Portable quality gate consumed by any repo via GitHub reusable workflows.",
+  "scripts": {
+    "test": "node --test"
+  },
+  "license": "MIT"
+}

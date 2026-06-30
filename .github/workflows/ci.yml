@@ -1,0 +1,24 @@
+name: ci
+
+# This repo's own CI. Runs the gate's unit tests AND dogfoods the gate on
+# itself (the gate repo runs its own gate on its own PRs).
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  unit:
+    name: unit tests
+    runs-on: [self-hosted, quality-gate]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run cli unit tests
+        run: node --test
+
+  dogfood:
+    name: dogfood gate
+    uses: ./.github/workflows/gate.yml
+    with:
+      config: ./gate.config.json
+      stack: auto
