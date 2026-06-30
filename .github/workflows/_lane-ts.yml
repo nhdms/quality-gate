@@ -10,6 +10,10 @@ name: ts-lane
 #   T1 anti-fake-done static ruleset (blocking):
 #     - rules/ via ast-grep, run by cli/run-rules.js — catches
 #       optimistic-success-signaling ("fake-done").
+#   T3 wired-not-mock behavioral smoke (blocking):
+#     - wired/ assertions run by cli/run-wired.js — proves a feature actually
+#       does the thing end-to-end (email really enqueued, overlap really
+#       rejected), observed black-box from capture artifacts.
 on:
   workflow_call:
     inputs:
@@ -131,3 +135,25 @@ jobs:
 
       - name: Anti-fake-done ruleset (T1, blocking)
         run: node ${{ steps.tool.outputs.dir }}/cli/run-rules.js . --config "$CONFIG" --tool-dir ${{ steps.tool.outputs.dir }}
+
+      # T3 wired-not-mock behavioral smoke. Only runs when the caller declares
+      # `wired[]`. The optional `wiredSetup.command` is the caller's glue: it
+      # exercises the real feature (against its own DB/fixtures) and writes a
+      # capture artifact per assertion into `wiredSetup.captureDir`. The harness
+      # then asserts behavior black-box. Fail-closed: a declared assertion with
+      # no capture fails the gate.
+      - name: Wired-not-mock behavioral smoke (T3, blocking)
+        run: |
+          set -eo pipefail
+          TOOL="${{ steps.tool.outputs.dir }}"
+          WIRED="$(node "$TOOL/cli/config-get.js" "$CONFIG" wired '[]')"
+          if [ "$WIRED" = "[]" ] || [ -z "$WIRED" ]; then
+            echo "quality-gate: no wired[] assertions declared — skipping T3."
+            exit 0
+          fi
+          CMD="$(node "$TOOL/cli/config-get.js" "$CONFIG" wiredSetup.command '')"
+          if [ -n "$CMD" ]; then
+            echo "quality-gate: producing wired captures via: $CMD"
+            eval "$CMD"
+          fi
+          node "$TOOL/cli/run-wired.js" --config "$CONFIG" --tool-dir "$TOOL"

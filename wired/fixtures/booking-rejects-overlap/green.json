@@ -1,0 +1,7 @@
+{
+  "trigger": "two overlapping bookings on room-1 (second must be rejected)",
+  "attempts": [
+    { "id": "a", "resource": "room-1", "start": "2026-01-01T10:00:00Z", "end": "2026-01-01T11:00:00Z", "accepted": true },
+    { "id": "b", "resource": "room-1", "start": "2026-01-01T10:30:00Z", "end": "2026-01-01T11:30:00Z", "accepted": false }
+  ]
+}

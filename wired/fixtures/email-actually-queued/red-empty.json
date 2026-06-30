@@ -1,0 +1,5 @@
+{
+  "trigger": "POST /api/signup (welcome email)",
+  "claimed": { "emailSent": true },
+  "outbound": []
+}

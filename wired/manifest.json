@@ -1,0 +1,21 @@
+{
+  "name": "wired-not-mock",
+  "version": "1.0.0",
+  "description": "Behavioral smoke assertions (T3): a feature must actually do the thing end-to-end, observed black-box from a capture artifact — not trusted from a 200 or a hardcoded success flag.",
+  "assertions": [
+    {
+      "id": "email-actually-queued",
+      "summary": "Triggering an email path produces a real outbound send/enqueue attempt, not a no-op/stub transport.",
+      "capture": "outbound[] of {transport,to,id}; optional claimed{emailSent}",
+      "red": "outbound empty or only stub transports (audited #131/#129)",
+      "green": "at least one outbound attempt over a real transport"
+    },
+    {
+      "id": "booking-rejects-overlap",
+      "summary": "Creating two overlapping bookings/slots is actually rejected — only one of an overlapping pair is accepted.",
+      "capture": "attempts[] of {resource,start,end,accepted}",
+      "red": "two accepted attempts overlap (double-booking allowed)",
+      "green": "overlap exercised and no two accepted attempts overlap"
+    }
+  ]
+}
