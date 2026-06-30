@@ -1,0 +1,6 @@
+{
+  "name": "audited-snippet-passwithnotests",
+  "scripts": {
+    "test": "vitest run --passWithNoTests"
+  }
+}

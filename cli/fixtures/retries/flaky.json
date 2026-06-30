@@ -1,0 +1,39 @@
+{
+  "suites": [
+    {
+      "title": "auth.spec.ts",
+      "specs": [
+        {
+          "title": "logs in",
+          "tests": [
+            {
+              "results": [
+                { "retry": 0, "status": "failed" },
+                { "retry": 1, "status": "passed" }
+              ]
+            }
+          ]
+        }
+      ],
+      "suites": [
+        {
+          "title": "nested",
+          "specs": [
+            {
+              "title": "renders dashboard",
+              "tests": [
+                {
+                  "results": [
+                    { "retry": 0, "status": "failed" },
+                    { "retry": 1, "status": "failed" },
+                    { "retry": 2, "status": "passed" }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -33,6 +33,7 @@ jobs:
     runs-on: [self-hosted, quality-gate]
     outputs:
       stack: ${{ steps.detect.outputs.stack }}
+      tooldir: ${{ steps.tool.outputs.dir }}
     steps:
       - name: Checkout caller repo
         uses: actions/checkout@v4
@@ -73,6 +74,63 @@ jobs:
           echo "stack=$stack" >> "$GITHUB_OUTPUT"
           echo "quality-gate: running stack '$stack'"
 
+  # Stack-agnostic mechanics that run on the PR DIFF for every stack:
+  #   - no-junk-diff: refuse banned paths / oversized binaries
+  #   - secret scan : any secret in an added line fails the gate
+  diff:
+    name: diff mechanics (no-junk + secrets)
+    needs: detect
+    runs-on: [self-hosted, quality-gate]
+    steps:
+      - name: Checkout caller repo (full history for diffing)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve gate tooling
+        id: tool
+        run: |
+          if [ -f ./cli/check-no-junk.js ]; then
+            echo "dir=." >> "$GITHUB_OUTPUT"
+          else
+            echo "dir=.quality-gate" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout quality-gate tooling
+        if: steps.tool.outputs.dir == '.quality-gate'
+        uses: actions/checkout@v4
+        with:
+          repository: nhdms/quality-gate
+          ref: main
+          path: .quality-gate
+
+      - name: Compute diff range
+        id: range
+        run: |
+          set -euo pipefail
+          if [ -n "${GITHUB_BASE_REF:-}" ]; then
+            git fetch --no-tags --depth=200 origin "$GITHUB_BASE_REF" || true
+            base="origin/$GITHUB_BASE_REF"
+          else
+            base="$(git rev-parse HEAD^ 2>/dev/null || git rev-parse HEAD)"
+          fi
+          echo "base=$base" >> "$GITHUB_OUTPUT"
+          echo "quality-gate: diffing against '$base'"
+
+      - name: Collect changed files + diff
+        run: |
+          set -euo pipefail
+          base="${{ steps.range.outputs.base }}"
+          git diff --name-only --diff-filter=ACMR "$base...HEAD" > changed-files.txt || true
+          git diff --unified=0 "$base...HEAD" > pr.gate.diff || true
+          echo "quality-gate: $(wc -l < changed-files.txt) changed files"
+
+      - name: No-junk-diff check
+        run: node ${{ steps.tool.outputs.dir }}/cli/check-no-junk.js changed-files.txt "${{ inputs.config }}"
+
+      - name: Secret scan (added lines)
+        run: node ${{ steps.tool.outputs.dir }}/cli/check-secrets.js pr.gate.diff "${{ inputs.config }}"
+
   ts:
     name: ts lane
     needs: detect
@@ -99,15 +157,15 @@ jobs:
 
   gate:
     name: gate result
-    needs: [detect, ts, go, rust]
+    needs: [detect, diff, ts, go, rust]
     if: always()
     runs-on: [self-hosted, quality-gate]
     steps:
       - name: Aggregate lane results
         run: |
           set -euo pipefail
-          echo "detect=${{ needs.detect.result }} ts=${{ needs.ts.result }} go=${{ needs.go.result }} rust=${{ needs.rust.result }}"
-          for r in "${{ needs.detect.result }}" "${{ needs.ts.result }}" "${{ needs.go.result }}" "${{ needs.rust.result }}"; do
+          echo "detect=${{ needs.detect.result }} diff=${{ needs.diff.result }} ts=${{ needs.ts.result }} go=${{ needs.go.result }} rust=${{ needs.rust.result }}"
+          for r in "${{ needs.detect.result }}" "${{ needs.diff.result }}" "${{ needs.ts.result }}" "${{ needs.go.result }}" "${{ needs.rust.result }}"; do
             if [ "$r" = "failure" ] || [ "$r" = "cancelled" ]; then
               echo "quality-gate: FAILED"
               exit 1

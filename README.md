@@ -26,6 +26,38 @@ jobs:
 That's it. The gate validates your config, auto-detects your stack
 (`ts | go | rust`), and runs the matching lane.
 
+## What the gate enforces (T0 mechanics)
+
+These are the hardened CI mechanics — the layer that stops a structurally hollow
+gate from going green. Stack-agnostic checks run on the PR diff for every stack;
+the rest run in the per-stack lane.
+
+| Check | What fails the gate | Config knob |
+| ----- | ------------------- | ----------- |
+| **No silent-zero-tests** | Fewer than `minTests` tests actually executed; banned `--passWithNoTests` flag found in package scripts | `thresholds.minTests` |
+| **Frozen lockfile** | Lockfile drift, or deps declared with no committed lockfile | `frozenLockfile` |
+| **Changed-line coverage** | Coverage on *changed* lines below threshold (not global %) | `thresholds.changedLineCoverage`, `coverage.exclude` |
+| **Secret scan** | Any secret (AWS key, GitHub PAT, private key, …) in an added diff line | `secrets.allow` |
+| **No-junk-diff** | Adding `.omc/`, build bundles, `node_modules/`, or an oversized binary | `noJunk.bannedPaths`, `noJunk.maxBinaryBytes`, `noJunk.allow` |
+| **Retry-as-failure** | e2e retries exceed tolerance; every retry is surfaced as a ⚠️ annotation | `e2e.report`, `thresholds.maxRetries` |
+
+Example config exercising the knobs:
+
+```json
+{
+  "stack": "auto",
+  "thresholds": { "changedLineCoverage": 80, "minTests": 1, "maxRetries": 0 },
+  "frozenLockfile": true,
+  "noJunk": { "allow": ["docs/fixtures/"], "maxBinaryBytes": 1048576 },
+  "secrets": { "allow": ["test/fixtures/"] }
+}
+```
+
+Every check ships with a fixture proving it goes **RED** on the bad case and
+**GREEN** on the clean case (`cli/*.test.js`), including regressions against the
+exact audited snippets (`vitest run --passWithNoTests`,
+`pnpm install --no-frozen-lockfile`).
+
 > Pin to `@main` for now. Once the interface is proven (#adoption) it gets a
 > `@v1` tag — pin that for stability.
 
@@ -66,7 +98,16 @@ gate.schema.json                  JSON Schema for gate.config.json
 gate.config.json                  this repo's own gate config
 cli/detect-stack.js               stack auto-detect (zero deps)
 cli/validate-config.js            config schema validator (zero deps)
-cli/*.test.js                     unit tests (node --test)
+cli/check-no-junk.js              no-junk-diff check (banned paths / big binaries)
+cli/check-secrets.js              portable secret scanner over added diff lines
+cli/check-min-tests.js            test-count parser + minTests gate (TAP/jest/vitest/go/rust)
+cli/lint-test-cmd.js              bans --passWithNoTests / --no-frozen-lockfile in scripts
+cli/check-frozen-lockfile.js      frozen/immutable install selection + drift
+cli/check-changed-coverage.js     lcov ∩ diff → changed-line coverage gate
+cli/check-retries.js              e2e retry surfacing (retry-as-failure)
+cli/config-get.js                 jq-free config reader for the lanes
+cli/lib/match.js                  shared path/glob matcher
+cli/*.test.js                     unit tests + fixtures (node --test)
 rules/  visual/                   future: anti-fake-done rules, visual oracle
 ```
 
@@ -78,7 +119,10 @@ node --test        # run cli unit tests (no dependencies required)
 
 ## Status
 
-This is the **foundation** (issue #1): scaffold, stable `workflow_call`
-interface, config schema, stack detect, lane stubs, and self-dogfood. The real
-check logic (T0 coverage, T1 ruleset, T2 visual, T4 wired/CLI) lands in later
-issues.
+- **#1 Foundation** — scaffold, stable `workflow_call` interface, config schema,
+  stack detect, lane stubs, self-dogfood. ✅
+- **#2 T0 mechanics** — the hardened CI mechanics above (no silent-zero-tests,
+  frozen lockfile, changed-line coverage, secret scan, no-junk-diff,
+  retry-as-failure). ✅
+- T1 anti-fake-done ruleset, T2 visual oracle, T3 wired-not-mock smoke land in
+  later issues.

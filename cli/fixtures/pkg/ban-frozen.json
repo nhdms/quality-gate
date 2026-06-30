@@ -1,0 +1,6 @@
+{
+  "name": "audited-snippet-no-frozen-lockfile",
+  "scripts": {
+    "preinstall": "pnpm install --no-frozen-lockfile"
+  }
+}

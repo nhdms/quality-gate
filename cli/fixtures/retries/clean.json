@@ -1,0 +1,17 @@
+{
+  "suites": [
+    {
+      "title": "auth.spec.ts",
+      "specs": [
+        {
+          "title": "logs in",
+          "tests": [
+            {
+              "results": [{ "retry": 0, "status": "passed" }]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

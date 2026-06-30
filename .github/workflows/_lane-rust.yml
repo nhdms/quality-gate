@@ -1,7 +1,10 @@
 name: rust-lane
 
-# Per-stack lane for Rust repos.
-# STUB ONLY for #1 — real checks land in later issues.
+# Rust lane — T0 mechanics (per-stack runner; core checks shared with ts/go):
+#   - frozen deps: `cargo --locked` (Cargo.lock drift fails the build)
+#   - run tests WITHOUT masking; enforce thresholds.minTests
+# Changed-line coverage / e2e retries reuse the same portable checks once a
+# coverage profile / report is produced (left to the caller's test command).
 on:
   workflow_call:
     inputs:
@@ -12,9 +15,46 @@ on:
 
 jobs:
   rust:
-    name: rust checks (stub)
+    name: rust checks
     runs-on: [self-hosted, quality-gate]
+    env:
+      CONFIG: ${{ inputs.config }}
     steps:
-      - name: Stub
+      - name: Checkout caller repo (full history for diffing)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve gate tooling
+        id: tool
         run: |
-          echo "quality-gate rust lane stub — real checks land in later issues (config=${{ inputs.config }})."
+          if [ -f ./cli/check-min-tests.js ]; then
+            echo "dir=." >> "$GITHUB_OUTPUT"
+          else
+            echo "dir=.quality-gate" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout quality-gate tooling
+        if: steps.tool.outputs.dir == '.quality-gate'
+        uses: actions/checkout@v4
+        with:
+          repository: nhdms/quality-gate
+          ref: main
+          path: .quality-gate
+
+      - name: Run tests (frozen Cargo.lock) + enforce minTests
+        run: |
+          set -eo pipefail
+          TOOL="${{ steps.tool.outputs.dir }}"
+          MIN="$(node "$TOOL/cli/config-get.js" "$CONFIG" thresholds.minTests 1)"
+          FROZEN="$(node "$TOOL/cli/config-get.js" "$CONFIG" frozenLockfile true)"
+          LOCKED="--locked"
+          if [ "$FROZEN" = "false" ]; then LOCKED=""; fi
+          test_exit=0
+          cargo test $LOCKED -- --include-ignored 2>&1 | tee test-output.txt
+          test_exit="${PIPESTATUS[0]}"
+          if [ "$test_exit" -ne 0 ]; then
+            echo "::error::quality-gate: cargo test failed (exit $test_exit) — frozen Cargo.lock or test failure"
+            exit "$test_exit"
+          fi
+          node "$TOOL/cli/check-min-tests.js" test-output.txt "$MIN"
