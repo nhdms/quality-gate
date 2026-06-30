@@ -1,0 +1,7 @@
+{
+  "name": "clean-scripts",
+  "scripts": {
+    "test": "vitest run",
+    "build": "tsc -p ."
+  }
+}

@@ -1,7 +1,10 @@
 name: go-lane
 
-# Per-stack lane for Go repos.
-# STUB ONLY for #1 — real checks land in later issues.
+# Go lane — T0 mechanics (per-stack runner; core checks shared with ts/rust):
+#   - frozen deps: `go.sum` must verify and `go mod tidy` must not drift
+#   - run tests WITHOUT masking; enforce thresholds.minTests
+# Changed-line coverage / e2e retries reuse the same portable checks once a
+# coverage profile / report is produced (left to the caller's test command).
 on:
   workflow_call:
     inputs:
@@ -12,9 +15,60 @@ on:
 
 jobs:
   go:
-    name: go checks (stub)
+    name: go checks
     runs-on: [self-hosted, quality-gate]
+    env:
+      CONFIG: ${{ inputs.config }}
     steps:
-      - name: Stub
+      - name: Checkout caller repo (full history for diffing)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve gate tooling
+        id: tool
         run: |
-          echo "quality-gate go lane stub — real checks land in later issues (config=${{ inputs.config }})."
+          if [ -f ./cli/check-min-tests.js ]; then
+            echo "dir=." >> "$GITHUB_OUTPUT"
+          else
+            echo "dir=.quality-gate" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout quality-gate tooling
+        if: steps.tool.outputs.dir == '.quality-gate'
+        uses: actions/checkout@v4
+        with:
+          repository: nhdms/quality-gate
+          ref: main
+          path: .quality-gate
+
+      - name: Frozen deps (go.sum verify + tidy drift)
+        run: |
+          set -eo pipefail
+          FROZEN="$(node "${{ steps.tool.outputs.dir }}/cli/config-get.js" "$CONFIG" frozenLockfile true)"
+          if [ "$FROZEN" = "false" ]; then
+            echo "quality-gate frozen-deps: disabled via config — skipping."
+            exit 0
+          fi
+          go mod verify
+          cp go.sum go.sum.gate.bak 2>/dev/null || true
+          go mod tidy
+          if [ -f go.sum.gate.bak ] && ! diff -q go.sum.gate.bak go.sum > /dev/null; then
+            echo "::error::frozen-deps: 'go mod tidy' changed go.sum — lockfile drift"
+            exit 1
+          fi
+          rm -f go.sum.gate.bak
+
+      - name: Run tests + enforce minTests
+        run: |
+          set -eo pipefail
+          TOOL="${{ steps.tool.outputs.dir }}"
+          MIN="$(node "$TOOL/cli/config-get.js" "$CONFIG" thresholds.minTests 1)"
+          test_exit=0
+          go test -v ./... > test-output.txt 2>&1 || test_exit=$?
+          cat test-output.txt
+          if [ "$test_exit" -ne 0 ]; then
+            echo "::error::quality-gate: go test failed (exit $test_exit)"
+            exit "$test_exit"
+          fi
+          node "$TOOL/cli/check-min-tests.js" test-output.txt "$MIN"

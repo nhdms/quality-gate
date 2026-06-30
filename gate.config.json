@@ -2,6 +2,17 @@
   "stack": "auto",
   "thresholds": {
     "changedLineCoverage": 80,
-    "minTests": 1
+    "minTests": 1,
+    "maxRetries": 0
+  },
+  "frozenLockfile": true,
+  "noJunk": {
+    "allow": ["cli/fixtures/"]
+  },
+  "secrets": {
+    "allow": ["cli/fixtures/"]
+  },
+  "coverage": {
+    "exclude": ["cli/fixtures/"]
   }
 }

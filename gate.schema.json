@@ -13,7 +13,7 @@
       "enum": ["auto", "ts", "go", "rust"]
     },
     "thresholds": {
-      "description": "Numeric quality gates (enforced by later issues; declared here).",
+      "description": "Numeric quality gates enforced by the T0 mechanics layer.",
       "type": "object",
       "additionalProperties": false,
       "properties": {
@@ -24,9 +24,80 @@
           "maximum": 100
         },
         "minTests": {
-          "description": "Minimum number of tests that must execute.",
+          "description": "Minimum number of tests that must actually execute (defends against --passWithNoTests).",
           "type": "integer",
           "minimum": 0
+        },
+        "maxRetries": {
+          "description": "Max e2e retries tolerated before the gate fails. Any retry is always surfaced as a warning annotation; exceeding this count turns the gate RED.",
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "frozenLockfile": {
+      "description": "Require a frozen/immutable lockfile install; lockfile drift fails the gate. Escape hatch only — defaults to true.",
+      "type": "boolean"
+    },
+    "noJunk": {
+      "description": "Refuse PR diffs that add banned paths or oversized binary assets.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "bannedPaths": {
+          "description": "Path prefixes/globs that may never be added (e.g. '.omc/', 'dist/', 'node_modules/').",
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "bannedExtensions": {
+          "description": "File extensions treated as binary assets and size-limited (e.g. '.png', '.jpg').",
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "maxBinaryBytes": {
+          "description": "Size limit (bytes) for files matching bannedExtensions. Larger files fail.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "allow": {
+          "description": "Allowlist of path prefixes/globs exempt from every no-junk rule.",
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "secrets": {
+      "description": "Secret scan over added diff lines.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "allow": {
+          "description": "Allowlist of path prefixes/globs whose added lines are exempt from secret scanning (e.g. test fixtures).",
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "coverage": {
+      "description": "Tuning for the changed-line coverage gate.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "exclude": {
+          "description": "Path globs excluded from the changed-line coverage denominator (e.g. '*.test.js', 'fixtures/').",
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "e2e": {
+      "description": "End-to-end retry surfacing (retry-as-failure-signal).",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "report": {
+          "description": "Path to a Playwright JSON report to inspect for retries.",
+          "type": "string"
         }
       }
     },

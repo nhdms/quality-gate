@@ -1,0 +1,11 @@
+diff --git a/src/math.js b/src/math.js
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/src/math.js
+@@ -0,0 +1,5 @@
++function add(a, b) {
++  return a + b;
++  // an unreachable, uncovered line below in the fixture
++}
++module.exports = { add };

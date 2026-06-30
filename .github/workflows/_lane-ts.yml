@@ -1,8 +1,11 @@
 name: ts-lane
 
-# Per-stack lane for TypeScript/JavaScript repos.
-# STUB ONLY for #1 — real checks (T0 changed-line coverage, T1 ruleset,
-# T2 visual, T4 wired/CLI) land in later issues.
+# TypeScript/JavaScript lane — T0 mechanics:
+#   - frozen lockfile install (drift fails)
+#   - anti-fake-done lint of package scripts (no --passWithNoTests etc.)
+#   - run tests WITHOUT --passWithNoTests; enforce thresholds.minTests
+#   - changed-line coverage gate
+#   - e2e retry surfacing (retry-as-failure-signal)
 on:
   workflow_call:
     inputs:
@@ -13,9 +16,96 @@ on:
 
 jobs:
   ts:
-    name: ts checks (stub)
+    name: ts checks
     runs-on: [self-hosted, quality-gate]
+    env:
+      CONFIG: ${{ inputs.config }}
     steps:
-      - name: Stub
+      - name: Checkout caller repo (full history for diffing)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve gate tooling
+        id: tool
         run: |
-          echo "quality-gate ts lane stub — real checks land in later issues (config=${{ inputs.config }})."
+          if [ -f ./cli/check-min-tests.js ]; then
+            echo "dir=." >> "$GITHUB_OUTPUT"
+          else
+            echo "dir=.quality-gate" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout quality-gate tooling
+        if: steps.tool.outputs.dir == '.quality-gate'
+        uses: actions/checkout@v4
+        with:
+          repository: nhdms/quality-gate
+          ref: main
+          path: .quality-gate
+
+      - name: Anti-fake-done lint (banned test flags)
+        run: node ${{ steps.tool.outputs.dir }}/cli/lint-test-cmd.js ./package.json
+
+      - name: Frozen-lockfile install
+        run: |
+          set -eo pipefail
+          TOOL="${{ steps.tool.outputs.dir }}"
+          FROZEN="$(node "$TOOL/cli/config-get.js" "$CONFIG" frozenLockfile true)"
+          node "$TOOL/cli/check-frozen-lockfile.js" . "$FROZEN"
+
+      - name: Run tests + enforce minTests
+        run: |
+          set -eo pipefail
+          TOOL="${{ steps.tool.outputs.dir }}"
+          MIN="$(node "$TOOL/cli/config-get.js" "$CONFIG" thresholds.minTests 1)"
+          test_exit=0
+          npm test > test-output.txt 2>&1 || test_exit=$?
+          cat test-output.txt
+          if [ "$test_exit" -ne 0 ]; then
+            echo "::error::quality-gate: caller test command failed (exit $test_exit)"
+            exit "$test_exit"
+          fi
+          node "$TOOL/cli/check-min-tests.js" test-output.txt "$MIN"
+
+      - name: Changed-line coverage gate
+        run: |
+          set -eo pipefail
+          TOOL="${{ steps.tool.outputs.dir }}"
+          THR="$(node "$TOOL/cli/config-get.js" "$CONFIG" thresholds.changedLineCoverage 0)"
+
+          # Locate an lcov report, or best-effort generate one for node --test repos.
+          LCOV=""
+          if [ -f coverage/lcov.info ]; then LCOV=coverage/lcov.info; fi
+          if [ -z "$LCOV" ] && grep -q 'node --test' package.json; then
+            mkdir -p coverage
+            node --test --experimental-test-coverage \
+              --test-reporter=lcov --test-reporter-destination=coverage/lcov.info \
+              > /dev/null 2>&1 || true
+            if [ -f coverage/lcov.info ]; then LCOV=coverage/lcov.info; fi
+          fi
+          if [ -z "$LCOV" ]; then
+            echo "::warning::quality-gate: no lcov report available — changed-line coverage not enforced on this run"
+            exit 0
+          fi
+
+          # Changed lines vs the PR base (or previous commit on push).
+          if [ -n "${GITHUB_BASE_REF:-}" ]; then
+            git fetch --no-tags --depth=200 origin "$GITHUB_BASE_REF" || true
+            BASE="origin/$GITHUB_BASE_REF"
+          else
+            BASE="$(git rev-parse HEAD^ 2>/dev/null || git rev-parse HEAD)"
+          fi
+          git diff --unified=0 "$BASE...HEAD" -- '*.js' '*.jsx' '*.ts' '*.tsx' > cov.gate.diff || true
+          node "$TOOL/cli/check-changed-coverage.js" "$LCOV" cov.gate.diff "$THR" "$CONFIG"
+
+      - name: E2E retry surfacing
+        run: |
+          set -eo pipefail
+          TOOL="${{ steps.tool.outputs.dir }}"
+          REPORT="$(node "$TOOL/cli/config-get.js" "$CONFIG" e2e.report "")"
+          MAXR="$(node "$TOOL/cli/config-get.js" "$CONFIG" thresholds.maxRetries 0)"
+          if [ -z "$REPORT" ]; then
+            echo "quality-gate: no e2e.report configured — skipping retry check."
+            exit 0
+          fi
+          node "$TOOL/cli/check-retries.js" "$REPORT" "$MAXR"
