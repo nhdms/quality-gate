@@ -108,10 +108,17 @@ cli/check-changed-coverage.js     lcov ∩ diff → changed-line coverage gate
 cli/check-retries.js              e2e retry surfacing (retry-as-failure)
 cli/config-get.js                 jq-free config reader for the lanes
 cli/run-rules.js                  T1 anti-fake-done ruleset runner (drives ast-grep)
+cli/visual-run.js                 visual oracle orchestrator: capture → diff → manifest
+cli/visual-capture.js             Playwright screenshot capture @breakpoints + overflow detect
+cli/visual-diff.js                zero-dep PNG pixel comparator
+cli/visual-verdict.js             screenshot-vs-baseline score + pass/fail verdict
+cli/visual-approve.js             explicit, human-run baseline (re)approval (never CI)
 cli/lib/match.js                  shared path/glob matcher
+cli/lib/png.js                    zero-dep PNG codec (built-in zlib)
 cli/*.test.js                     unit tests + fixtures (node --test)
+.github/workflows/_lane-visual.yml  visual/UI oracle lane (T2)
 rules/                            T1 anti-fake-done ruleset (ast-grep) — see rules/README.md
-visual/                           future: visual oracle
+visual/                           visual oracle docs + baseline approval flow
 ```
 
 ## Anti-fake-done ruleset (T1)
@@ -141,4 +148,7 @@ node --test        # run all unit tests
 - **#4 T1 anti-fake-done ruleset** — versioned ast-grep ruleset run as a
   blocking ts lane (no-op default providers, lying return values, mock data on
   production paths, dev scripts in production HTML). ✅
-- T2 visual oracle and T3 wired-not-mock smoke land in later issues.
+- **#5 T2 visual oracle** — Playwright screenshot capture at breakpoints,
+  design-baseline pixel diff, `visual-verdict` score, mobile-overflow detection,
+  and a no-silent-auto-baseline approval flow. See [`visual/`](./visual/). ✅
+- T3 wired-not-mock smoke lands in a later issue.

@@ -6,8 +6,13 @@
   },
   "visual": {
     "routes": ["/", "/login"],
-    "breakpoints": [375, 1280],
-    "baselineDir": "visual/baselines"
+    "breakpoints": [375, 768, 1280],
+    "baselineDir": "visual/baselines",
+    "baseURL": "http://localhost:3000",
+    "minScore": 90,
+    "maxDiffRatio": 0,
+    "tolerance": 2,
+    "blocking": true
   },
   "wired": ["db", "auth"],
   "rules": {

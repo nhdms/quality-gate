@@ -102,23 +102,49 @@
       }
     },
     "visual": {
-      "description": "Visual/UI oracle config (consumed by the visual lane, T2).",
+      "description": "Visual/UI oracle config (consumed by the visual lane, T2). Present + non-empty `routes` activates the lane.",
       "type": "object",
       "additionalProperties": false,
       "properties": {
         "routes": {
-          "description": "Routes/paths to capture and diff.",
+          "description": "Routes/paths to capture and diff (relative to baseURL, or absolute URLs).",
           "type": "array",
           "items": { "type": "string" }
         },
         "breakpoints": {
-          "description": "Viewport widths (px) to render at.",
+          "description": "Viewport widths (px) to render at. Default 375 / 768 / 1280.",
           "type": "array",
           "items": { "type": "integer", "minimum": 1 }
         },
         "baselineDir": {
-          "description": "Directory holding approved baseline screenshots.",
+          "description": "Directory holding approved baseline screenshots (seeded via the documented approval flow, never auto-baselined).",
           "type": "string"
+        },
+        "baseURL": {
+          "description": "Base URL the routes are served from during capture (e.g. a started dev/preview server). May also be supplied via the VISUAL_BASE_URL env var.",
+          "type": "string"
+        },
+        "minScore": {
+          "description": "Minimum visual-verdict score (0-100) for a screen to pass. Default 90.",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "maxDiffRatio": {
+          "description": "Max proportion of differing pixels tolerated per screen (0 = pixel-perfect). Loosen for cross-runner antialiasing noise. Default 0.",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "tolerance": {
+          "description": "Per-channel 0-255 colour tolerance applied before counting a pixel as different. Default 0.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255
+        },
+        "blocking": {
+          "description": "When true the visual lane fails the gate (RED); when false it runs advisory-only (surfaces the score, never blocks). Default true. Set false for repos still seeding baselines.",
+          "type": "boolean"
         }
       }
     },

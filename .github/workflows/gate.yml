@@ -22,6 +22,10 @@ on:
         description: Stack override (auto|ts|go|rust). 'auto' detects from manifests.
         type: string
         default: auto
+      visual_base_url:
+        description: Base URL the visual lane captures against (e.g. a per-PR preview URL). Falls back to visual.baseURL in the config.
+        type: string
+        default: ''
     outputs:
       stack:
         description: The stack the gate ran against (detected or overridden).
@@ -34,6 +38,7 @@ jobs:
     outputs:
       stack: ${{ steps.detect.outputs.stack }}
       tooldir: ${{ steps.tool.outputs.dir }}
+      visual: ${{ steps.visual.outputs.enabled }}
     steps:
       - name: Checkout caller repo
         uses: actions/checkout@v4
@@ -73,6 +78,19 @@ jobs:
           fi
           echo "stack=$stack" >> "$GITHUB_OUTPUT"
           echo "quality-gate: running stack '$stack'"
+
+      - name: Detect visual lane (visual.routes configured)
+        id: visual
+        run: |
+          set -euo pipefail
+          routes="$(node ${{ steps.tool.outputs.dir }}/cli/config-get.js "${{ inputs.config }}" visual.routes '[]')"
+          if [ "$routes" != "[]" ] && [ -n "$routes" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+            echo "quality-gate: visual lane ENABLED"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "quality-gate: visual lane skipped (no visual.routes)"
+          fi
 
   # Stack-agnostic mechanics that run on the PR DIFF for every stack:
   #   - no-junk-diff: refuse banned paths / oversized binaries
@@ -155,17 +173,27 @@ jobs:
     with:
       config: ${{ inputs.config }}
 
+  # Stack-agnostic visual/UI oracle: only runs when visual.routes is configured.
+  visual:
+    name: visual lane
+    needs: detect
+    if: needs.detect.outputs.visual == 'true'
+    uses: ./.github/workflows/_lane-visual.yml
+    with:
+      config: ${{ inputs.config }}
+      base_url: ${{ inputs.visual_base_url }}
+
   gate:
     name: gate result
-    needs: [detect, diff, ts, go, rust]
+    needs: [detect, diff, ts, go, rust, visual]
     if: always()
     runs-on: [self-hosted, quality-gate]
     steps:
       - name: Aggregate lane results
         run: |
           set -euo pipefail
-          echo "detect=${{ needs.detect.result }} diff=${{ needs.diff.result }} ts=${{ needs.ts.result }} go=${{ needs.go.result }} rust=${{ needs.rust.result }}"
-          for r in "${{ needs.detect.result }}" "${{ needs.diff.result }}" "${{ needs.ts.result }}" "${{ needs.go.result }}" "${{ needs.rust.result }}"; do
+          echo "detect=${{ needs.detect.result }} diff=${{ needs.diff.result }} ts=${{ needs.ts.result }} go=${{ needs.go.result }} rust=${{ needs.rust.result }} visual=${{ needs.visual.result }}"
+          for r in "${{ needs.detect.result }}" "${{ needs.diff.result }}" "${{ needs.ts.result }}" "${{ needs.go.result }}" "${{ needs.rust.result }}" "${{ needs.visual.result }}"; do
             if [ "$r" = "failure" ] || [ "$r" = "cancelled" ]; then
               echo "quality-gate: FAILED"
               exit 1

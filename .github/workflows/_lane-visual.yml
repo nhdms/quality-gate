@@ -1,0 +1,88 @@
+name: visual-lane
+
+# Visual/UI oracle lane (T2). Stack-agnostic: it judges the RENDERED UI, not the
+# language. Activated by gate.yml only when `visual.routes` is configured.
+#
+# Flow: install Playwright + Chromium → capture each route × breakpoint against
+# the configured baseURL → diff vs approved baselines in `visual.baselineDir` →
+# emit a visual-verdict score. RED on drift / overflow / dimension mismatch /
+# missing baseline, unless `visual.blocking` is false (advisory-only).
+#
+# The CALLER is responsible for making `visual.baseURL` reachable (a started dev
+# server or a deployed preview). Pass a dynamic preview URL via `base_url`.
+on:
+  workflow_call:
+    inputs:
+      config:
+        description: Path to the caller's gate.config.json.
+        type: string
+        default: ./gate.config.json
+      base_url:
+        description: Override for visual.baseURL (e.g. a per-PR preview URL).
+        type: string
+        default: ''
+
+jobs:
+  visual:
+    name: visual oracle
+    runs-on: [self-hosted, quality-gate]
+    env:
+      CONFIG: ${{ inputs.config }}
+      VISUAL_BASE_URL: ${{ inputs.base_url }}
+    steps:
+      - name: Checkout caller repo
+        uses: actions/checkout@v4
+
+      - name: Resolve gate tooling
+        id: tool
+        run: |
+          if [ -f ./cli/visual-run.js ]; then
+            echo "dir=." >> "$GITHUB_OUTPUT"
+          else
+            echo "dir=.quality-gate" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout quality-gate tooling
+        if: steps.tool.outputs.dir == '.quality-gate'
+        uses: actions/checkout@v4
+        with:
+          repository: nhdms/quality-gate
+          ref: main
+          path: .quality-gate
+
+      - name: Install Playwright + Chromium
+        run: |
+          set -eo pipefail
+          # Pinned, repo-local install so the lane stays portable across runners.
+          npm init -y >/dev/null 2>&1 || true
+          npm install --no-save playwright@1
+          npx --yes playwright install --with-deps chromium
+
+      - name: Capture + diff
+        run: |
+          set -eo pipefail
+          TOOL="${{ steps.tool.outputs.dir }}"
+          node "$TOOL/cli/visual-run.js" "$CONFIG" .visual/captures .visual/manifest.json
+
+      - name: Visual verdict (score + pass/fail)
+        run: |
+          set -eo pipefail
+          TOOL="${{ steps.tool.outputs.dir }}"
+          BLOCKING="$(node "$TOOL/cli/config-get.js" "$CONFIG" visual.blocking true)"
+          verdict_exit=0
+          node "$TOOL/cli/visual-verdict.js" .visual/manifest.json "$CONFIG" || verdict_exit=$?
+          if [ "$verdict_exit" -ne 0 ]; then
+            if [ "$BLOCKING" = "false" ]; then
+              echo "::warning::quality-gate visual: advisory mode — failures surfaced but not blocking."
+              exit 0
+            fi
+            exit "$verdict_exit"
+          fi
+
+      - name: Upload captures + manifest
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-oracle
+          path: .visual/
+          if-no-files-found: ignore
