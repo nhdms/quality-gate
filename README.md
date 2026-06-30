@@ -60,7 +60,7 @@ override.
 
 ```
 .github/workflows/gate.yml        reusable workflow (workflow_call) — the stable entrypoint
-.github/workflows/_lanes/*.yml    per-stack lanes (ts/go/rust) — stubs for now
+.github/workflows/_lane-*.yml     per-stack lanes (ts/go/rust) — stubs for now
 .github/workflows/ci.yml          this repo's own CI: unit tests + self-dogfood
 gate.schema.json                  JSON Schema for gate.config.json
 gate.config.json                  this repo's own gate config
