@@ -37,10 +37,21 @@ jobs:
       - name: Checkout caller repo
         uses: actions/checkout@v4
 
-      # The gate's own tooling (schema + cli) lives in this repo, not the
-      # caller's checkout, so it is fetched into a side directory.
+      # The gate's tooling (schema + cli) lives in THIS repo. When the gate runs
+      # on its own repo (dogfood), the caller checkout already contains it; an
+      # external consumer does not, so we fetch it into a side directory.
+      - name: Resolve gate tooling
+        id: tool
+        run: |
+          if [ -f ./cli/validate-config.js ] && [ -f ./gate.schema.json ]; then
+            echo "dir=." >> "$GITHUB_OUTPUT"
+          else
+            echo "dir=.quality-gate" >> "$GITHUB_OUTPUT"
+          fi
+
       # TODO(#adoption): pin `ref` to the v1 tag once the interface is frozen.
       - name: Checkout quality-gate tooling
+        if: steps.tool.outputs.dir == '.quality-gate'
         uses: actions/checkout@v4
         with:
           repository: nhdms/quality-gate
@@ -48,14 +59,14 @@ jobs:
           path: .quality-gate
 
       - name: Validate gate.config.json against schema
-        run: node .quality-gate/cli/validate-config.js "${{ inputs.config }}" .quality-gate/gate.schema.json
+        run: node ${{ steps.tool.outputs.dir }}/cli/validate-config.js "${{ inputs.config }}" ${{ steps.tool.outputs.dir }}/gate.schema.json
 
       - name: Detect stack
         id: detect
         run: |
           set -euo pipefail
           if [ "${{ inputs.stack }}" = "auto" ]; then
-            stack="$(node .quality-gate/cli/detect-stack.js .)"
+            stack="$(node ${{ steps.tool.outputs.dir }}/cli/detect-stack.js .)"
           else
             stack="${{ inputs.stack }}"
           fi
