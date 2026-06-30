@@ -6,6 +6,9 @@ node_modules/
 /coverage/
 *.tap
 *.gate.diff
+# Visual oracle run artifacts (captures + manifest). Approved BASELINES are
+# committed by the consuming repo under visual.baselineDir — these are not.
+/.visual/
 
 # agent-orchestrator / local agent tooling (not part of the project)
 .ao/
