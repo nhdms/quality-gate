@@ -1,0 +1,64 @@
+# no-lying-return
+#
+# A function that returns a hardcoded success value (sent:true, emailSent:true,
+# ok:true, ...) while, in the same function body, constructing or calling a
+# transport whose name marks it as a stub / unimplemented / mock / fake.
+#
+# The audit caught this in dispatch.ts:
+#
+#     const transport = new UnimplementedEmailTransport();
+#     await transport.send(msg);
+#     return { emailSent: true };   // <- lies: nothing was sent
+#
+# The defect is the co-occurrence of (a) a hardcoded success flag in a return
+# and (b) a stub/unimplemented transport in the same function. Real code must
+# derive the success flag from the actual transport result.
+id: no-lying-return
+language: tsx
+severity: error
+message: >-
+  Function returns a hardcoded success flag while using a stub/unimplemented
+  transport in the same body — the return value lies about what happened.
+  Derive the flag from the real transport result.
+note: See rules/README.md#no-lying-return.
+ignores:
+  - "**/*.test.*"
+  - "**/*.spec.*"
+  - "**/__tests__/**"
+  - "**/__mocks__/**"
+  - "**/*.stories.*"
+  - "**/*.story.*"
+  - "**/test/**"
+  - "**/tests/**"
+  - "**/node_modules/**"
+  - "**/fixtures/**"
+rule:
+  all:
+    - pattern: return $RET
+    # (a) the returned object has a success flag literally set to true
+    - has:
+        stopBy: end
+        kind: pair
+        all:
+          - has:
+              field: key
+              regex: "^(sent|emailSent|emailsent|smsSent|smssent|messageSent|pushSent|notified|ok|success|succeeded|delivered|queued|prevented|blocked|saved|persisted)$"
+          - has:
+              field: value
+              regex: "^true$"
+    # (b) ...inside a function that also references a stub/unimplemented transport
+    - inside:
+        stopBy: end
+        any:
+          - kind: function_declaration
+          - kind: function_expression
+          - kind: arrow_function
+          - kind: method_definition
+          - kind: generator_function_declaration
+        has:
+          stopBy: end
+          any:
+            - kind: identifier
+            - kind: type_identifier
+            - kind: property_identifier
+          regex: "(Unimplemented|NotImplemented|Stub|Stubbed|Noop|NoOp|Fake|Faked|Mock|Mocked|Dummy|Placeholder)"

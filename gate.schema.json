@@ -126,6 +126,43 @@
       "description": "Capabilities that must be wired end-to-end (not mocked). Checked by the wired/CLI lane, T4.",
       "type": "array",
       "items": { "type": "string" }
+    },
+    "rules": {
+      "description": "Anti-fake-done static ruleset (T1) configuration. The ruleset is versioned in rules/VERSION; pin a known set when consuming the gate.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "description": "Master toggle for the anti-fake-done ruleset lane (default true).",
+          "type": "boolean"
+        },
+        "disabled": {
+          "description": "Rule ids to skip entirely.",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "no-noop-default-prod",
+              "no-lying-return",
+              "no-mock-in-prod-path",
+              "no-dev-script-in-layout"
+            ]
+          }
+        },
+        "warnOnly": {
+          "description": "Rule ids to report without failing the gate (advisory severity).",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "no-noop-default-prod",
+              "no-lying-return",
+              "no-mock-in-prod-path",
+              "no-dev-script-in-layout"
+            ]
+          }
+        }
+      }
     }
   }
 }

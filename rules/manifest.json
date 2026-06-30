@@ -1,0 +1,30 @@
+{
+  "name": "anti-fake-done",
+  "version": "1.0.0",
+  "engine": "ast-grep",
+  "engineVersion": "0.39.5",
+  "description": "Catches the optimistic-success-signaling (\"fake-done\") defect class: code that reports OK/sent/prevented when the guarantee is absent.",
+  "languages": ["ts", "tsx", "js", "jsx"],
+  "rules": [
+    {
+      "id": "no-noop-default-prod",
+      "severity": "error",
+      "summary": "Provider/transport defaults to a no-op stub when an env var is unset (no production guard)."
+    },
+    {
+      "id": "no-lying-return",
+      "severity": "error",
+      "summary": "Function returns a hardcoded success flag while using a stub/unimplemented transport."
+    },
+    {
+      "id": "no-mock-in-prod-path",
+      "severity": "error",
+      "summary": "Mock/placeholder data or fake timers on a non-test production code path."
+    },
+    {
+      "id": "no-dev-script-in-layout",
+      "severity": "error",
+      "summary": "Dev/design tooling scripts injected into the root layout / production HTML."
+    }
+  ]
+}
