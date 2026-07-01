@@ -109,8 +109,14 @@ constructing or calling a transport whose name marks it as stub / unimplemented
 > real plus a `setTimeout` faking the save call.
 
 Flags (1) `const/let/var` whose **name** advertises mock/fake/placeholder data,
-and (2) a `new Promise(... setTimeout/setInterval ...)` fake round-trip. Generic
-`TODO` comments are intentionally **not** matched, to keep the rule precise.
+and (2) a `new Promise(...)` whose **timer callback fakes a result** — it
+resolves with a fabricated value, flips a done/success flag, or calls a setter.
+Generic `TODO` comments are intentionally **not** matched, to keep the rule
+precise.
+
+> A plain delay/backoff — `new Promise(res => setTimeout(res, ms))` — only
+> advances time and is **not** matched. Genuine retry/sleep/jitter helpers are
+> legitimate production code; flagging them was a false positive (issue #19).
 
 **Fix:** wire to real data/IO, or move the mock to a test file (test paths are
 ignored).

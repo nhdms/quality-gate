@@ -12,9 +12,10 @@ export function OnboardingWizard() {
   const [steps] = useState(MOCK_STEPS);
 
   async function save() {
-    // Fake the network round-trip so the UI "feels" wired.
-    await new Promise((resolve) => setTimeout(resolve, 800));
-    return true;
+    // Fake the network round-trip: resolve with a fabricated "saved" result so
+    // the UI "feels" wired. (A plain delay — setTimeout(resolve, 800) — would
+    // be legitimate; faking a RESULT is what makes this a mock round-trip.)
+    return new Promise((resolve) => setTimeout(() => resolve({ ok: true, id: 1 }), 800));
   }
 
   return (
