@@ -62,13 +62,18 @@ exact audited snippets (`vitest run --passWithNoTests`,
 > agent-ord (TS/pnpm) consume in CI. See [`ADOPTION.md`](./ADOPTION.md) for the
 > per-stack config differences discovered while adopting it. `@main` tracks
 > unreleased changes; pin `@v1` for stability.
+>
+> **Maintainers:** `v1` is a *moving* major tag — it MUST be advanced to each
+> new release commit or `@v1` silently serves stale code. See
+> [`RELEASING.md`](./RELEASING.md) for the required `git tag -f` step.
 
 ## Inputs
 
-| Input    | Default               | Description                                          |
-| -------- | --------------------- | ---------------------------------------------------- |
-| `config` | `./gate.config.json`  | Path to your gate config.                            |
-| `stack`  | `auto`                | Force a stack (`ts`/`go`/`rust`) or `auto`-detect.   |
+| Input             | Default              | Description                                                                                 |
+| ----------------- | -------------------- | ------------------------------------------------------------------------------------------- |
+| `config`          | `./gate.config.json` | Path to your gate config.                                                                   |
+| `stack`           | `auto`               | Force a stack (`ts`/`go`/`rust`) or `auto`-detect.                                           |
+| `visual_base_url` | `''`                 | Base URL the visual lane captures against (e.g. a per-PR preview URL); falls back to `visual.baseURL` in the config. |
 
 ## Outputs
 
