@@ -88,13 +88,21 @@ stub. Genuinely-optional config with a non-stub default (`PORT || 3000`,
 
 ### no-lying-return
 
-**Severity: error.** A function that returns a hardcoded success value
+**Severity: error.** A function that reports a hardcoded success value
 (`sent: true`, `emailSent: true`, `ok: true`, …) while, in the same body,
 constructing or calling a transport whose name marks it as stub / unimplemented
 / mock / fake.
 
 > Audit: `dispatch.ts` returns `emailSent: true` over an
 > `UnimplementedEmailTransport`.
+
+Catches two syntactic shapes of the same lie: (1) a literal success flag in the
+returned object (`return { emailSent: true }`), and (2) the flag set by a bare
+assignment to a flag-named identifier later returned via a variable
+(`let emailSent = false; …; emailSent = true; return { emailSent }`). A `const`/
+`let` **declarator** that derives the flag from the real result
+(`const emailSent = await transport.send(…)`) is a different node kind and stays
+green.
 
 **Fix:** derive the success flag from the real transport result
 (`emailSent: result.accepted.length > 0`).

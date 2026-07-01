@@ -80,6 +80,28 @@ test('the whole ruleset is green on all four clean equivalents at once', () => {
   assert.strictEqual(result.findings.length, 0, JSON.stringify(result.findings));
 });
 
+// --- no-lying-return, variable-assignment shape (issue #20) --------------
+// The rule must catch the flag-set-via-assignment form, not just the literal
+// `return { emailSent: true }`. RED on `let emailSent=false; ...; emailSent=true;
+// return { emailSent }` next to a stub transport; GREEN when the flag is a
+// `const` declarator derived from a real transport result.
+test('no-lying-return: flags the variable-assignment success-flag form', () => {
+  const result = scanFixtures(['no-lying-return/bad-assignment.ts']);
+  assert.ok(
+    ruleIdsIn(result).has('no-lying-return'),
+    'expected no-lying-return to flag the `emailSent = true` assignment over a stub transport'
+  );
+});
+
+test('no-lying-return: is green when the flag is derived from a real result', () => {
+  const result = scanFixtures(['no-lying-return/good-assignment.ts']);
+  assert.strictEqual(
+    result.findings.length,
+    0,
+    `expected no findings on good-assignment.ts, got: ${JSON.stringify(result.findings.map((f) => f.ruleId))}`
+  );
+});
+
 // --- Mock data in a *.test.* file must NOT be flagged (rule `ignores`) ---
 test('mock data in a test file is ignored', () => {
   const result = scanFixtures(['no-mock-in-prod-path/ignored.test.tsx']);
