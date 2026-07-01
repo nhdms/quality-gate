@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "description": "Portable quality gate consumed by any repo via GitHub reusable workflows.",
+  "bin": {
+    "gate": "cli/gate.js"
+  },
   "scripts": {
     "test": "node --test"
   },
