@@ -35,6 +35,13 @@ frozen, self-consistent bundle — the workflow and the CLI it runs can never
 drift apart mid-release. `@main` still exists for gate development; consumers
 should never pin it.
 
+`v1` is a **moving** major tag: it only delivers the current interface if
+maintainers advance it to each new release commit. If it lags behind `main`,
+`@v1` serves stale, self-inconsistent code (a `v1` commit whose `gate.yml` still
+says `ref: main`). See [`RELEASING.md`](./RELEASING.md) for the mandatory
+tag-advance step — and note that right after this adoption (#3) merges, `v1`
+must be re-pointed to the #3 merge commit for the guarantee above to hold.
+
 ## Per-stack config differences discovered
 
 Adopting the same gate across two repos surfaced concrete, real differences.
