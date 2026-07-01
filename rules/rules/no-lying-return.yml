@@ -1,6 +1,6 @@
 # no-lying-return
 #
-# A function that returns a hardcoded success value (sent:true, emailSent:true,
+# A function that reports a hardcoded success value (sent:true, emailSent:true,
 # ok:true, ...) while, in the same function body, constructing or calling a
 # transport whose name marks it as a stub / unimplemented / mock / fake.
 #
@@ -10,9 +10,18 @@
 #     await transport.send(msg);
 #     return { emailSent: true };   // <- lies: nothing was sent
 #
-# The defect is the co-occurrence of (a) a hardcoded success flag in a return
-# and (b) a stub/unimplemented transport in the same function. Real code must
-# derive the success flag from the actual transport result.
+# ...but the same lie also hides behind a variable that is later returned:
+#
+#     let emailSent = false;
+#     await transport.send(input);  // transport = stub
+#     emailSent = true;             // <- lies; not derived from the result
+#     return { emailSent };
+#
+# The defect is the co-occurrence of (a) a hardcoded success flag — set either
+# directly in a returned object literal OR by assignment to a flag identifier
+# that is later returned — and (b) a stub/unimplemented transport in the same
+# function. Real code must derive the success flag from the actual transport
+# result.
 id: no-lying-return
 language: tsx
 severity: error
@@ -33,32 +42,69 @@ ignores:
   - "**/node_modules/**"
   - "**/fixtures/**"
 rule:
-  all:
-    - pattern: return $RET
-    # (a) the returned object has a success flag literally set to true
-    - has:
-        stopBy: end
-        kind: pair
-        all:
-          - has:
-              field: key
-              regex: "^(sent|emailSent|emailsent|smsSent|smssent|messageSent|pushSent|notified|ok|success|succeeded|delivered|queued|prevented|blocked|saved|persisted)$"
-          - has:
-              field: value
-              regex: "^true$"
-    # (b) ...inside a function that also references a stub/unimplemented transport
-    - inside:
-        stopBy: end
-        any:
-          - kind: function_declaration
-          - kind: function_expression
-          - kind: arrow_function
-          - kind: method_definition
-          - kind: generator_function_declaration
-        has:
-          stopBy: end
-          any:
-            - kind: identifier
-            - kind: type_identifier
-            - kind: property_identifier
-          regex: "(Unimplemented|NotImplemented|Stub|Stubbed|Noop|NoOp|Fake|Faked|Mock|Mocked|Dummy|Placeholder)"
+  # The success flag can lie in two syntactic shapes. Either shape, when it
+  # co-occurs with a stub/unimplemented transport (constraint `b`), is a match.
+  any:
+    # --- Shape 1: literal success flag in the returned object -----------------
+    #     return { emailSent: true }
+    - all:
+        - pattern: return $RET
+        # (a) the returned object has a success flag literally set to true
+        - has:
+            stopBy: end
+            kind: pair
+            all:
+              - has:
+                  field: key
+                  regex: "^(sent|emailSent|emailsent|smsSent|smssent|messageSent|pushSent|notified|ok|success|succeeded|delivered|queued|prevented|blocked|saved|persisted)$"
+              - has:
+                  field: value
+                  regex: "^true$"
+        # (b) ...inside a stub/unimplemented transport function
+        - inside:
+            stopBy: end
+            any:
+              - kind: function_declaration
+              - kind: function_expression
+              - kind: arrow_function
+              - kind: method_definition
+              - kind: generator_function_declaration
+            has:
+              stopBy: end
+              any:
+                - kind: identifier
+                - kind: type_identifier
+                - kind: property_identifier
+              regex: "(Unimplemented|NotImplemented|Stub|Stubbed|Noop|NoOp|Fake|Faked|Mock|Mocked|Dummy|Placeholder)"
+    # --- Shape 2: success flag set via assignment, returned via a variable ----
+    #     let emailSent = false; ...; emailSent = true; return { emailSent }
+    - all:
+        - kind: assignment_expression
+        # (a) `<success-flag identifier> = true`. Only a bare reassignment of a
+        #     flag-named identifier to the `true` literal — a `let/const/var`
+        #     declarator (e.g. `const emailSent = await real.send()`) is a
+        #     different node kind and does NOT match, so a flag derived from the
+        #     real transport result stays green.
+        - has:
+            field: left
+            kind: identifier
+            regex: "^(sent|emailSent|emailsent|smsSent|smssent|messageSent|pushSent|notified|ok|success|succeeded|delivered|queued|prevented|blocked|saved|persisted)$"
+        - has:
+            field: right
+            regex: "^true$"
+        # (b) ...inside a stub/unimplemented transport function
+        - inside:
+            stopBy: end
+            any:
+              - kind: function_declaration
+              - kind: function_expression
+              - kind: arrow_function
+              - kind: method_definition
+              - kind: generator_function_declaration
+            has:
+              stopBy: end
+              any:
+                - kind: identifier
+                - kind: type_identifier
+                - kind: property_identifier
+              regex: "(Unimplemented|NotImplemented|Stub|Stubbed|Noop|NoOp|Fake|Faked|Mock|Mocked|Dummy|Placeholder)"
