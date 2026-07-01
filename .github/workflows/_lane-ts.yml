@@ -34,27 +34,54 @@ jobs:
         with:
           fetch-depth: 0
 
-      # The gate's tooling (cli/ + rules/) lives in THIS repo. When the gate
-      # runs on its own repo (dogfood) the checkout already contains it; an
-      # external consumer does not, so we fetch it into a side directory.
+      # Pin Node so the caller's tests/build run on a supported version instead
+      # of the self-hosted runner's system Node (which may be old — e.g. Node 18,
+      # where global `crypto` is absent, silently breaking suites that pass on
+      # Node 20+). Reads an optional `node` field from gate.config.json; default
+      # 22. (#23)
+      - name: Resolve Node version
+        id: node
+        run: |
+          V="$(node -e "try{process.stdout.write(String(require(require('path').resolve(process.env.CONFIG)).node||''))}catch(e){}" 2>/dev/null || true)"
+          echo "version=${V:-22}" >> "$GITHUB_OUTPUT"
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ steps.node.outputs.version }}
+
+      # The gate's tooling (cli/ + rules/) lives in THIS repo. On the gate's own
+      # repo (dogfood) the caller checkout already contains it. An external
+      # consumer does not, so we fetch it — into $RUNNER_TEMP, OUTSIDE the
+      # caller's working dir, so the caller's test runner (vitest/jest whole-tree
+      # globbing) never sweeps the gate's own fixture `*.test.*` files, and the
+      # T1 scan of `.` never matches the gate's own rule fixtures. (#24)
       - name: Resolve gate tooling
         id: tool
         run: |
           if [ -f ./cli/check-min-tests.js ] && [ -f ./cli/run-rules.js ]; then
             echo "dir=." >> "$GITHUB_OUTPUT"
+            echo "external=false" >> "$GITHUB_OUTPUT"
           else
-            echo "dir=.quality-gate" >> "$GITHUB_OUTPUT"
+            echo "dir=$RUNNER_TEMP/quality-gate" >> "$GITHUB_OUTPUT"
+            echo "external=true" >> "$GITHUB_OUTPUT"
           fi
 
       # Pinned to the v1 tag: external consumers pin gate.yml@v1, so the tooling
-      # they fetch must match that frozen interface (see ADOPTION.md).
+      # they fetch must match that frozen interface (see ADOPTION.md). checkout
+      # cannot target a path outside the workspace, so we land it in the
+      # workspace then move it to $RUNNER_TEMP before any caller command runs.
       - name: Checkout quality-gate tooling
-        if: steps.tool.outputs.dir == '.quality-gate'
+        if: steps.tool.outputs.external == 'true'
         uses: actions/checkout@v4
         with:
           repository: nhdms/quality-gate
           ref: v1
-          path: .quality-gate
+          path: .qg-tooling-src
+      - name: Move tooling out of the caller's test-scan path
+        if: steps.tool.outputs.external == 'true'
+        run: |
+          rm -rf "$RUNNER_TEMP/quality-gate"
+          mv .qg-tooling-src "$RUNNER_TEMP/quality-gate"
 
       - name: Anti-fake-done lint (banned test flags)
         run: node ${{ steps.tool.outputs.dir }}/cli/lint-test-cmd.js ./package.json
