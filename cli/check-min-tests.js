@@ -21,7 +21,10 @@
  * @returns {number|null} number of tests executed, or null if unparseable
  */
 function countTests(output) {
-  const text = String(output);
+  // Strip ANSI SGR codes first: vitest/jest emit coloured summaries even when
+  // redirected, and an escape between the line start and the `Tests` label
+  // (e.g. `\x1b[1mTests`) breaks the `^\s*Tests` anchors below → count unknown.
+  const text = String(output).replace(/\x1b\[[0-9;]*m/g, '');
 
   // TAP plan/summary: `# tests 12` (node --test emits this).
   let m = text.match(/^#\s*tests\s+(\d+)\s*$/im);

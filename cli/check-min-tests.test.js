@@ -15,6 +15,15 @@ test('parses TAP `# tests N`', () => {
   assert.strictEqual(countTests('TAP version 13\n# tests 12\n# pass 12\n'), 12);
 });
 
+test('parses ANSI-coloured vitest summary (regression)', () => {
+  // vitest emits SGR colour codes even when redirected; the escape before the
+  // `Tests` label must not defeat the count parser.
+  const coloured =
+    ' \x1b[2mTest Files\x1b[22m  \x1b[1m\x1b[32m15 passed\x1b[39m\x1b[22m (15)\n' +
+    '      \x1b[1mTests\x1b[22m  \x1b[1m\x1b[32m208 passed\x1b[39m\x1b[22m (208)\n';
+  assert.strictEqual(countTests(coloured), 208);
+});
+
 test('parses jest total', () => {
   assert.strictEqual(countTests('Tests:       3 passed, 1 failed, 4 total'), 4);
 });
