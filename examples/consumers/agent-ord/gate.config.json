@@ -1,0 +1,15 @@
+{
+  "stack": "auto",
+  "thresholds": {
+    "changedLineCoverage": 0,
+    "minTests": 1,
+    "maxRetries": 0
+  },
+  "frozenLockfile": true,
+  "noJunk": {
+    "allow": []
+  },
+  "secrets": {
+    "allow": []
+  }
+}

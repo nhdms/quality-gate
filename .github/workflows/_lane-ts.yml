@@ -42,13 +42,14 @@ jobs:
             echo "dir=.quality-gate" >> "$GITHUB_OUTPUT"
           fi
 
-      # TODO(#adoption): pin `ref` to the v1 tag once the interface is frozen.
+      # Pinned to the v1 tag: external consumers pin gate.yml@v1, so the tooling
+      # they fetch must match that frozen interface (see ADOPTION.md).
       - name: Checkout quality-gate tooling
         if: steps.tool.outputs.dir == '.quality-gate'
         uses: actions/checkout@v4
         with:
           repository: nhdms/quality-gate
-          ref: main
+          ref: v1
           path: .quality-gate
 
       - name: Anti-fake-done lint (banned test flags)

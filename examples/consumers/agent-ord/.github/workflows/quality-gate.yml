@@ -1,0 +1,15 @@
+name: quality-gate
+
+# nhdms/agent-ord (TS / pnpm workspace monorepo) consuming the SHARED gate.
+# This is the entire integration: a trigger + the 3-line `gate` job. No gate
+# logic is copied — it lives in nhdms/quality-gate and is pinned at @v1.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  gate:
+    uses: nhdms/quality-gate/.github/workflows/gate.yml@v1
+    with:
+      config: ./gate.config.json
