@@ -9,6 +9,9 @@ node_modules/
 # Visual oracle run artifacts (captures + manifest). Approved BASELINES are
 # committed by the consuming repo under visual.baselineDir — these are not.
 /.visual/
+# Wired-not-mock (T3) capture artifacts. Produced in-run by wiredSetup.command;
+# committing them would let a hand-crafted capture fake a green.
+/wired-captures/
 
 # agent-orchestrator / local agent tooling (not part of the project)
 .ao/

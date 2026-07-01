@@ -149,9 +149,28 @@
       }
     },
     "wired": {
-      "description": "Capabilities that must be wired end-to-end (not mocked). Checked by the wired/CLI lane, T4.",
+      "description": "Behavioral smoke assertions (T3) that must pass: each names a capability proven wired end-to-end (not mocked) by the wired-not-mock harness (cli/run-wired.js). Built-ins: 'email-actually-queued', 'booking-rejects-overlap'. A repo may add its own via wiredSetup.assertionsDir.",
       "type": "array",
       "items": { "type": "string" }
+    },
+    "wiredSetup": {
+      "description": "Glue for the wired-not-mock behavioral smoke harness (T3). The repo exercises its real feature and writes a capture artifact per assertion; the harness asserts against it.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "command": {
+          "description": "Optional shell command the lane runs before the harness to produce capture artifacts (exercises the real feature against the repo's own DB/fixtures).",
+          "type": "string"
+        },
+        "captureDir": {
+          "description": "Directory the harness reads `<assertion-id>.json` capture artifacts from. Default 'wired-captures'.",
+          "type": "string"
+        },
+        "assertionsDir": {
+          "description": "Optional directory of repo-provided custom assertion modules (`<id>.js` exporting { id, assert }), merged with (and able to shadow) the built-ins.",
+          "type": "string"
+        }
+      }
     },
     "rules": {
       "description": "Anti-fake-done static ruleset (T1) configuration. The ruleset is versioned in rules/VERSION; pin a known set when consuming the gate.",

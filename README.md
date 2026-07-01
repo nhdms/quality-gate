@@ -141,6 +141,7 @@ cli/check-changed-coverage.js     lcov ∩ diff → changed-line coverage gate
 cli/check-retries.js              e2e retry surfacing (retry-as-failure)
 cli/config-get.js                 jq-free config reader for the lanes
 cli/run-rules.js                  T1 anti-fake-done ruleset runner (drives ast-grep)
+cli/run-wired.js                  T3 wired-not-mock behavioral smoke harness
 cli/visual-run.js                 visual oracle orchestrator: capture → diff → manifest
 cli/visual-capture.js             Playwright screenshot capture @breakpoints + overflow detect
 cli/visual-diff.js                zero-dep PNG pixel comparator
@@ -151,6 +152,7 @@ cli/lib/png.js                    zero-dep PNG codec (built-in zlib)
 cli/*.test.js                     unit tests + fixtures (node --test)
 .github/workflows/_lane-visual.yml  visual/UI oracle lane (T2)
 rules/                            T1 anti-fake-done ruleset (ast-grep) — see rules/README.md
+wired/                            T3 wired-not-mock assertions + fixtures — see wired/README.md
 visual/                           visual oracle docs + baseline approval flow
 examples/consumers/agent-ord/onboarding-hook.sh  auto-inject reference (T4)
 AGENT-ORD-INTEGRATION.md          gate init + auto-inject + gate-as-done-condition (T4)
@@ -165,6 +167,33 @@ on production paths, dev scripts in production HTML). It's documented in
 [`rules/README.md`](./rules/README.md) and configurable per-project via the
 `rules` block of `gate.config.json`. Pin a known set via
 [`rules/VERSION`](./rules/VERSION).
+
+## Wired-not-mock behavioral smoke (T3)
+
+T1 catches fake-done *statically*; T3 catches it *behaviorally*. It asserts a
+feature **actually does the thing** end-to-end — the email is really enqueued,
+the overlapping booking really rejected — by observing what the system *did*,
+not by trusting a `200` or a hardcoded `{ ok: true }`. This is the layer that
+catches `emailSent: true` with no email ever delivered, and double-booking that
+was only half-prevented.
+
+Declare the capabilities that must be wired, and provide the glue that exercises
+your real feature into a capture artifact:
+
+```json
+{
+  "stack": "ts",
+  "wired": ["email-actually-queued", "booking-rejects-overlap"],
+  "wiredSetup": { "command": "npm run smoke:wired", "captureDir": "wired-captures" }
+}
+```
+
+Assertions are **black-box** (they observe behavior, so they survive refactors)
+and **fail-closed** (a declared assertion with no capture fails the gate). The
+harness is ~70% portable; the glue and captures are per-feature. Built-ins ship
+with RED/GREEN fixtures; adding your own assertion takes a tiny module + a
+capture. Full docs in [`wired/README.md`](./wired/README.md); pin a known set via
+[`wired/VERSION`](./wired/VERSION).
 
 ## Develop
 
@@ -186,8 +215,11 @@ node --test        # run all unit tests
 - **#5 T2 visual oracle** — Playwright screenshot capture at breakpoints,
   design-baseline pixel diff, `visual-verdict` score, mobile-overflow detection,
   and a no-silent-auto-baseline approval flow. See [`visual/`](./visual/). ✅
+- **#6 T3 wired-not-mock smoke** — behavioral assertions (`email-actually-queued`,
+  `booking-rejects-overlap`) that prove a feature does the thing end-to-end,
+  observed black-box from capture artifacts, run as a blocking lane. See
+  [`wired/`](./wired/). ✅
 - **#7 T4 adoption + agent-ord wiring** — `gate init` scaffolder (idempotent,
   stack-pre-filled), agent-ord auto-inject onboarding hook, and the
   gate-as-done-condition merge oracle (`gate check`). See
   [`AGENT-ORD-INTEGRATION.md`](./AGENT-ORD-INTEGRATION.md). ✅
-- T3 wired-not-mock smoke lands in a later issue.

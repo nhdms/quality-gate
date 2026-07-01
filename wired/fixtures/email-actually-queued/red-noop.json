@@ -1,0 +1,7 @@
+{
+  "trigger": "POST /api/signup (welcome email)",
+  "claimed": { "emailSent": true },
+  "outbound": [
+    { "transport": "test", "to": "new-user@example.com", "id": null }
+  ]
+}
