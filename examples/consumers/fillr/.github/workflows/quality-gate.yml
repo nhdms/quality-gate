@@ -1,0 +1,14 @@
+name: quality-gate
+
+# akatsuki-io/fillr (Next.js / TypeScript, pnpm) consuming the SHARED gate.
+# The whole integration is the `gate` job below — pinned at @v1, no copied
+# logic. See ADOPTION.md in nhdms/quality-gate for the two fillr-specific
+# changes this required (banned `--passWithNoTests`, self-hosted runner access).
+on:
+  pull_request:
+
+jobs:
+  gate:
+    uses: nhdms/quality-gate/.github/workflows/gate.yml@v1
+    with:
+      config: ./gate.config.json

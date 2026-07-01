@@ -18,7 +18,7 @@ Then call the gate from any workflow (the 3-line consumer snippet):
 ```yaml
 jobs:
   gate:
-    uses: nhdms/quality-gate/.github/workflows/gate.yml@main
+    uses: nhdms/quality-gate/.github/workflows/gate.yml@v1
     with:
       config: ./gate.config.json   # optional — this is the default
 ```
@@ -58,8 +58,10 @@ Every check ships with a fixture proving it goes **RED** on the bad case and
 exact audited snippets (`vitest run --passWithNoTests`,
 `pnpm install --no-frozen-lockfile`).
 
-> Pin to `@main` for now. Once the interface is proven (#adoption) it gets a
-> `@v1` tag — pin that for stability.
+> Pin to `@v1` — the frozen, proven interface that fillr (Next/TS) and
+> agent-ord (TS/pnpm) consume in CI. See [`ADOPTION.md`](./ADOPTION.md) for the
+> per-stack config differences discovered while adopting it. `@main` tracks
+> unreleased changes; pin `@v1` for stability.
 
 ## Inputs
 

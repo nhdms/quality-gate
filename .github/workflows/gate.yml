@@ -4,7 +4,7 @@ name: gate
 #
 #   jobs:
 #     gate:
-#       uses: nhdms/quality-gate/.github/workflows/gate.yml@main
+#       uses: nhdms/quality-gate/.github/workflows/gate.yml@v1
 #       with:
 #         config: ./gate.config.json   # optional, this is the default
 #
@@ -55,13 +55,14 @@ jobs:
             echo "dir=.quality-gate" >> "$GITHUB_OUTPUT"
           fi
 
-      # TODO(#adoption): pin `ref` to the v1 tag once the interface is frozen.
+      # Pinned to the v1 tag: external consumers pin gate.yml@v1, so the tooling
+      # they fetch must match that frozen interface (see ADOPTION.md).
       - name: Checkout quality-gate tooling
         if: steps.tool.outputs.dir == '.quality-gate'
         uses: actions/checkout@v4
         with:
           repository: nhdms/quality-gate
-          ref: main
+          ref: v1
           path: .quality-gate
 
       - name: Validate gate.config.json against schema
@@ -119,7 +120,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: nhdms/quality-gate
-          ref: main
+          ref: v1
           path: .quality-gate
 
       - name: Compute diff range

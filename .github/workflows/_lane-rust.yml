@@ -39,7 +39,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: nhdms/quality-gate
-          ref: main
+          ref: v1
           path: .quality-gate
 
       - name: Run tests (frozen Cargo.lock) + enforce minTests
