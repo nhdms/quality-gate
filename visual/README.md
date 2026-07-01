@@ -57,7 +57,7 @@ In your repo's `gate.config.json`:
 | `routes` | — | Routes to capture. **Presence of a non-empty `routes` activates the lane.** |
 | `breakpoints` | `[375,768,1280]` | Viewport widths (px). |
 | `baselineDir` | `visual/baseline` | Where approved baselines live (committed to the consuming repo). |
-| `baseURL` | `http://localhost:3000` | Where the routes are served during capture. Also settable via `VISUAL_BASE_URL` or the `visual_base_url` workflow input (e.g. a per-PR preview URL). |
+| `baseURL` | `http://localhost:3000` | Where the routes are served during capture. An explicit `VISUAL_BASE_URL` env var (set by the `visual_base_url` workflow input) **overrides** this — so a per-PR preview URL wins over a pinned config value. |
 | `minScore` | `90` | Minimum visual-verdict score (0-100) per screen. |
 | `maxDiffRatio` | `0` | Max proportion of differing pixels (0 = pixel-perfect). Loosen for cross-runner antialiasing noise. |
 | `tolerance` | `0` | Per-channel 0-255 colour tolerance before a pixel counts as different. |

@@ -15,6 +15,7 @@
 
 const { compareFiles } = require('./visual-diff');
 const { safeName } = require('./visual-capture');
+const { get } = require('./config-get');
 
 /**
  * Build manifest entries by diffing captures against baselines on disk.
@@ -57,14 +58,29 @@ function buildManifest(captures, baselineDir, deps) {
   });
 }
 
-module.exports = { buildManifest };
+/**
+ * Resolve the base URL to capture against. An explicit VISUAL_BASE_URL (set by
+ * gate.yml's `visual_base_url` input — e.g. a per-PR preview URL) must WIN over
+ * the static `visual.baseURL` in config; otherwise a consumer that pins a config
+ * baseURL could never point a run at a dynamic preview origin.
+ * @param {object} cfg parsed gate config
+ * @param {object} [env] environment (defaults to process.env)
+ * @returns {string}
+ */
+function resolveBaseURL(cfg, env) {
+  const e = env || process.env;
+  const fromEnv = e.VISUAL_BASE_URL;
+  if (fromEnv) return fromEnv;
+  return get(cfg, 'visual.baseURL', 'http://localhost:3000');
+}
+
+module.exports = { buildManifest, resolveBaseURL };
 
 /* node:coverage disable */
 if (require.main === module) {
   const fs = require('fs');
   const path = require('path');
   const { captureAll } = require('./visual-capture');
-  const { get } = require('./config-get');
 
   // CLI: node visual-run.js <config.json> [outDir] [manifestOut]
   const [, , configPath, outDirArg, manifestArg] = process.argv;
@@ -82,10 +98,18 @@ if (require.main === module) {
   const visual = cfg.visual || {};
   const routes = get(cfg, 'visual.routes', []);
   if (!Array.isArray(routes) || routes.length === 0) {
-    process.stdout.write('quality-gate visual: no visual.routes configured — skipping.\n');
+    // A `visual` block with no routes is almost certainly a misconfiguration:
+    // silently passing it would be the exact fake-done this lane exists to stop.
+    if (cfg.visual) {
+      process.stderr.write(
+        '::warning::quality-gate visual: a `visual` block is configured but `routes` is empty — nothing captured. Add routes or remove the block.\n'
+      );
+    } else {
+      process.stdout.write('quality-gate visual: no visual config — skipping.\n');
+    }
     process.exit(0);
   }
-  const baseURL = get(cfg, 'visual.baseURL', process.env.VISUAL_BASE_URL || 'http://localhost:3000');
+  const baseURL = resolveBaseURL(cfg);
   const baselineDir = get(cfg, 'visual.baselineDir', 'visual/baseline');
   const breakpoints = get(cfg, 'visual.breakpoints', undefined);
   const tolerance = get(cfg, 'visual.tolerance', 0);

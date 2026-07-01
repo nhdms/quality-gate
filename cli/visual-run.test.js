@@ -3,7 +3,7 @@
 const test = require('node:test');
 const assert = require('node:assert');
 const path = require('path');
-const { buildManifest } = require('./visual-run');
+const { buildManifest, resolveBaseURL } = require('./visual-run');
 
 // Inject a fake fs + compare so the orchestrator's wiring is testable without
 // Playwright or real PNGs on disk.
@@ -45,6 +45,25 @@ test('carries the overflow flag through to the manifest', () => {
   const compare = () => ({ diffRatio: 0, diffPixels: 0, totalPixels: 1, dimensionMismatch: false });
   const [entry] = buildManifest(captures, 'visual/baseline', { fs, path, compare });
   assert.strictEqual(entry.overflow, true);
+});
+
+test('resolveBaseURL: explicit VISUAL_BASE_URL wins over config (per-PR preview)', () => {
+  const cfg = { visual: { baseURL: 'http://config-origin:3000' } };
+  // The env-supplied preview URL must override a pinned config baseURL.
+  assert.strictEqual(
+    resolveBaseURL(cfg, { VISUAL_BASE_URL: 'http://preview-pr-42.example.com' }),
+    'http://preview-pr-42.example.com'
+  );
+});
+
+test('resolveBaseURL: falls back to config baseURL when env is unset/empty', () => {
+  const cfg = { visual: { baseURL: 'http://config-origin:3000' } };
+  assert.strictEqual(resolveBaseURL(cfg, {}), 'http://config-origin:3000');
+  assert.strictEqual(resolveBaseURL(cfg, { VISUAL_BASE_URL: '' }), 'http://config-origin:3000');
+});
+
+test('resolveBaseURL: defaults to localhost when neither env nor config set', () => {
+  assert.strictEqual(resolveBaseURL({}, {}), 'http://localhost:3000');
 });
 
 test('records a diff failure as a captureError', () => {
