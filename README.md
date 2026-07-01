@@ -26,6 +26,29 @@ jobs:
 That's it. The gate validates your config, auto-detects your stack
 (`ts | go | rust`), and runs the matching lane.
 
+### Zero-config adoption: `gate init`
+
+Skip the manual setup — scaffold the whole thing (workflow + a stack-pre-filled
+`gate.config.json` + a `visual/baseline/` dir) in one idempotent command:
+
+```bash
+npx --yes github:nhdms/quality-gate gate init      # in your repo root
+```
+
+The only follow-up is optionally filling `visual.routes` + seeding baselines.
+`gate init` is idempotent (re-runs never clobber your edits), so it is also what
+[agent-orchestrator](./AGENT-ORD-INTEGRATION.md) runs automatically when it
+onboards a repo. The same `gate` CLI exposes the **merge-oracle** used as
+agent-ord's done-condition:
+
+```bash
+gate check .    # exit 0 = quality-gate satisfied; exit 1 = fake-done/UI-broken → NOT done
+```
+
+See [`AGENT-ORD-INTEGRATION.md`](./AGENT-ORD-INTEGRATION.md) for the auto-inject
+hook, the gate-as-done-condition, and the end-to-end `ao spawn → implement →
+gate → merge` flow.
+
 ## What the gate enforces (T0 mechanics)
 
 These are the hardened CI mechanics — the layer that stops a structurally hollow
@@ -104,6 +127,9 @@ override.
 .github/workflows/ci.yml          this repo's own CI: unit tests + self-dogfood
 gate.schema.json                  JSON Schema for gate.config.json
 gate.config.json                  this repo's own gate config
+cli/gate.js                       `gate` bin — dispatches `gate init` + `gate check` (T4)
+cli/gate-init.js                  scaffold the gate into any repo (idempotent, stack-pre-filled)
+cli/gate-check.js                 local merge-oracle — agent-ord's gate-as-done-condition
 cli/detect-stack.js               stack auto-detect (zero deps)
 cli/validate-config.js            config schema validator (zero deps)
 cli/check-no-junk.js              no-junk-diff check (banned paths / big binaries)
@@ -126,6 +152,8 @@ cli/*.test.js                     unit tests + fixtures (node --test)
 .github/workflows/_lane-visual.yml  visual/UI oracle lane (T2)
 rules/                            T1 anti-fake-done ruleset (ast-grep) — see rules/README.md
 visual/                           visual oracle docs + baseline approval flow
+examples/consumers/agent-ord/onboarding-hook.sh  auto-inject reference (T4)
+AGENT-ORD-INTEGRATION.md          gate init + auto-inject + gate-as-done-condition (T4)
 ```
 
 ## Anti-fake-done ruleset (T1)
@@ -158,4 +186,8 @@ node --test        # run all unit tests
 - **#5 T2 visual oracle** — Playwright screenshot capture at breakpoints,
   design-baseline pixel diff, `visual-verdict` score, mobile-overflow detection,
   and a no-silent-auto-baseline approval flow. See [`visual/`](./visual/). ✅
+- **#7 T4 adoption + agent-ord wiring** — `gate init` scaffolder (idempotent,
+  stack-pre-filled), agent-ord auto-inject onboarding hook, and the
+  gate-as-done-condition merge oracle (`gate check`). See
+  [`AGENT-ORD-INTEGRATION.md`](./AGENT-ORD-INTEGRATION.md). ✅
 - T3 wired-not-mock smoke lands in a later issue.

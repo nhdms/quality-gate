@@ -180,7 +180,7 @@ function main(argv) {
   process.exit(0);
 }
 
-module.exports = { runRules, discoverRuleIds, readRulesConfig, resolveAstGrep, TOOL_ROOT };
+module.exports = { runRules, discoverRuleIds, readRulesConfig, resolveAstGrep, formatFinding, TOOL_ROOT };
 
 if (require.main === module) {
   main(process.argv);
