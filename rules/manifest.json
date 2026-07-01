@@ -1,6 +1,6 @@
 {
   "name": "anti-fake-done",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "engine": "ast-grep",
   "engineVersion": "0.39.5",
   "description": "Catches the optimistic-success-signaling (\"fake-done\") defect class: code that reports OK/sent/prevented when the guarantee is absent.",
