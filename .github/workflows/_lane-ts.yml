@@ -93,6 +93,22 @@ jobs:
           FROZEN="$(node "$TOOL/cli/config-get.js" "$CONFIG" frozenLockfile true)"
           node "$TOOL/cli/check-frozen-lockfile.js" . "$FROZEN"
 
+      # Optional pre-test build. Monorepos whose tests import a built workspace
+      # dep (e.g. a subpath resolving to another package's dist/) must build
+      # first, or those suites fail with ERR_MODULE_NOT_FOUND on a tree that is
+      # green in the caller's own CI. Skipped when `buildCommand` is unset. (#26)
+      - name: Build (optional, before tests)
+        run: |
+          set -eo pipefail
+          TOOL="${{ steps.tool.outputs.dir }}"
+          BUILD="$(node "$TOOL/cli/config-get.js" "$CONFIG" buildCommand '')"
+          if [ -n "$BUILD" ]; then
+            echo "quality-gate: running caller build before tests: $BUILD"
+            eval "$BUILD"
+          else
+            echo "quality-gate: no buildCommand configured — skipping pre-test build."
+          fi
+
       - name: Run tests + enforce minTests
         run: |
           set -eo pipefail
