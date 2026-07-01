@@ -190,14 +190,11 @@ test('runner: invalid capture JSON fails (not crashes)', () => {
 });
 
 test('runner: an unknown assertion id is an error (typo defense)', () => {
-  const r = runWired({ observations: { 'no-such-assertion': {} }, configPath: undefined });
-  // observations bypasses disk, but wired[] is read from config; use config form instead:
-  assert.ok(r); // (above call skips because config has no wired[]) — assert via config:
   withTempGate({ stack: 'ts', wired: ['no-such-assertion'] }, {}, ({ configPath, capDir }) => {
-    const rr = runWired({ configPath, captureDir: capDir });
-    assert.strictEqual(rr.ok, false);
-    assert.strictEqual(rr.results[0].status, 'error');
-    assert.match(rr.results[0].reason, /unknown wired assertion/i);
+    const r = runWired({ configPath, captureDir: capDir });
+    assert.strictEqual(r.ok, false);
+    assert.strictEqual(r.results[0].status, 'error');
+    assert.match(r.results[0].reason, /unknown wired assertion/i);
   });
 });
 
@@ -265,6 +262,19 @@ test('CLI exits 1 and emits ::error:: on a RED capture', () => {
     assert.strictEqual(r.status, 1);
     assert.match(r.stdout, /::error::wired\/email-actually-queued/);
   });
+});
+
+test('CLI exits 2 on a malformed gate config', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'qg-t3-badcfg-'));
+  try {
+    const configPath = path.join(dir, 'gate.config.json');
+    fs.writeFileSync(configPath, '{ not: json');
+    const r = spawnSync('node', [CLI, '--config', configPath], { encoding: 'utf8' });
+    assert.strictEqual(r.status, 2);
+    assert.match(r.stderr, /not valid JSON/i);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test('CLI exits 0 on a GREEN capture and skips with no wired[]', () => {

@@ -60,6 +60,13 @@ produces the capture against your own setup.
 
 > **Fail-closed.** A declared assertion with no capture artifact **fails** the
 > gate. Absence of evidence is not evidence of wiring.
+>
+> **Captures must be produced in-run — never committed.** The lane wipes
+> `captureDir` *before* running your glue, so a checked-in or stale-from-a-prior-run
+> `wired-captures/<id>.json` can't fake a green (that would just move
+> "looks-done-but-faked" from the code into the capture). Add `captureDir` to
+> your `.gitignore`. If no `wiredSetup.command` is configured, the dir stays
+> empty and every declared assertion fail-closes.
 
 ## Built-in assertions
 
@@ -84,6 +91,12 @@ Capture (`wired-captures/email-actually-queued.json`):
 - **GREEN** — at least one attempt over a real transport (`ses`, `sendgrid`,
   `smtp`, a real queue, …).
 
+> **Allowlist-of-stubs, by design.** Stub detection matches a fixed list of
+> no-op tokens; an *unknown* transport name is assumed **real**. That's
+> deliberate — the failure this catches is a stub silently standing in, so we
+> only flag names we know to be no-ops. If your no-op transport uses a bespoke
+> name, add it to your own assertion or name it one of the known tokens.
+
 ### `booking-rejects-overlap`
 
 Creating two overlapping bookings/slots must be rejected — only one of an
@@ -102,7 +115,9 @@ Capture (`wired-captures/booking-rejects-overlap.json`):
 ```
 
 `start`/`end` accept ISO-8601 strings or epoch ms; `resource` is optional (omit
-for a single shared resource). Intervals are half-open `[start, end)`.
+for a single shared resource). Intervals are half-open `[start, end)`. `accepted`
+must be a boolean — only `accepted: true` counts as a booking the system let
+through; anything else (including a missing field) is treated as rejected.
 
 - **RED** — two **accepted** attempts on the same resource overlap.
 - **GREEN** — the overlap was exercised and no two accepted attempts overlap.

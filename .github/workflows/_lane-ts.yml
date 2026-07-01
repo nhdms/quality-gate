@@ -142,6 +142,12 @@ jobs:
       # capture artifact per assertion into `wiredSetup.captureDir`. The harness
       # then asserts behavior black-box. Fail-closed: a declared assertion with
       # no capture fails the gate.
+      #
+      # Provenance: captures MUST be produced in-run. We wipe the capture dir
+      # BEFORE running the glue so a committed or stale-from-a-prior-run capture
+      # cannot fake a green — otherwise "looks done but faked" just relocates
+      # from the code to a hand-crafted wired-captures/<id>.json. If no glue is
+      # configured, the dir stays empty and every declared assertion fail-closes.
       - name: Wired-not-mock behavioral smoke (T3, blocking)
         run: |
           set -eo pipefail
@@ -151,9 +157,20 @@ jobs:
             echo "quality-gate: no wired[] assertions declared — skipping T3."
             exit 0
           fi
+          CAP="$(node "$TOOL/cli/config-get.js" "$CONFIG" wiredSetup.captureDir 'wired-captures')"
+          # Refuse an unsafe capture dir before we rm -rf it.
+          case "$CAP" in
+            ""|"."|".."|"/"|/*|*..*)
+              echo "::error::quality-gate: wiredSetup.captureDir '$CAP' is unsafe — use a relative path inside the repo."
+              exit 2
+              ;;
+          esac
+          rm -rf "$CAP" && mkdir -p "$CAP"
           CMD="$(node "$TOOL/cli/config-get.js" "$CONFIG" wiredSetup.command '')"
           if [ -n "$CMD" ]; then
-            echo "quality-gate: producing wired captures via: $CMD"
+            echo "quality-gate: producing wired captures in '$CAP/' via: $CMD"
             eval "$CMD"
+          else
+            echo "::warning::quality-gate: no wiredSetup.command — captures must be produced in-run; declared assertions fail-closed if absent."
           fi
-          node "$TOOL/cli/run-wired.js" --config "$CONFIG" --tool-dir "$TOOL"
+          node "$TOOL/cli/run-wired.js" --config "$CONFIG" --tool-dir "$TOOL" --capture-dir "$CAP"
