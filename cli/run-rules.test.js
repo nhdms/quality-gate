@@ -98,6 +98,28 @@ test('no-mock-in-prod-path: does not flag ordinary sample* identifiers', () => {
   );
 });
 
+// --- Regression (#19): a faked async round-trip (timer resolves with a
+//     fabricated value, or flips a success flag) MUST still fire ---
+test('no-mock-in-prod-path: flags a faked async round-trip (fake-save timer)', () => {
+  const result = scanFixtures(['no-mock-in-prod-path/fake-save.tsx']);
+  assert.ok(
+    ruleIdsIn(result).has('no-mock-in-prod-path'),
+    `expected the fake-save timer to be flagged, got: ${JSON.stringify(result.findings.map((f) => f.ruleId))}`
+  );
+});
+
+// --- Regression (#19): a genuine delay/backoff helper —
+//     new Promise(res => setTimeout(res, ms)) — MUST NOT fire. This is the
+//     false positive found against fillr@dev's base-adapter.ts. ---
+test('no-mock-in-prod-path: does not flag a plain delay/backoff helper', () => {
+  const result = scanFixtures(['no-mock-in-prod-path/delay-backoff.tsx']);
+  assert.strictEqual(
+    result.findings.length,
+    0,
+    `delay/backoff helpers should not be flagged, got: ${JSON.stringify(result.findings.map((f) => f.text))}`
+  );
+});
+
 // --- Config toggle: disable a rule -> it stops firing ---
 test('config can disable an individual rule', () => {
   const result = scanFixtures(['no-noop-default-prod/bad.ts'], {
