@@ -28,7 +28,10 @@
  */
 
 // Transport names that mean "this does not actually send anything". Matched
-// case-insensitively against the whole transport token.
+// case-insensitively against the whole transport token. These stub tokens are
+// detector DATA, not a stub standing in on a prod path — this file is the T3
+// harness that reasons about stubs, so the T1 anti-fake-done rule mis-fires.
+// ast-grep-ignore: no-mock-in-prod-path
 const STUB_TRANSPORTS = new Set([
   'test', 'tests', 'testing',
   'noop', 'no-op', 'none', 'null', 'void', 'off', 'disabled', 'disable',
@@ -81,6 +84,10 @@ function assert(observation) {
   }
 
   const transports = real.map((o) => o.transport).join(', ');
+  // This ok:true is DERIVED from proven-real sends (`real` = outbound over
+  // non-stub transports); it is the opposite of a lying return. The T1 rule
+  // mis-fires because the same function body names stub transports as data.
+  // ast-grep-ignore: no-lying-return
   return {
     ok: true,
     reason: `${real.length} real outbound send/enqueue attempt(s) captured over: ${transports}`,
