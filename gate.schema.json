@@ -39,6 +39,10 @@
       "description": "Require a frozen/immutable lockfile install; lockfile drift fails the gate. Escape hatch only — defaults to true.",
       "type": "boolean"
     },
+    "buildCommand": {
+      "description": "Optional command run AFTER install and BEFORE the caller's test command. Needed by monorepos whose tests import built workspace deps (e.g. 'pnpm -r build'). Skipped when unset.",
+      "type": "string"
+    },
     "noJunk": {
       "description": "Refuse PR diffs that add banned paths or oversized binary assets.",
       "type": "object",
